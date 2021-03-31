@@ -24,8 +24,9 @@ namespace QuantLib {
     CoxIngersollRossProcess::CoxIngersollRossProcess(Real speed,
                                                        Volatility vol,
                                                        Real x0,
-                                                       Real level)
-    : x0_(x0), speed_(speed), level_(level), volatility_(vol) {
+                                                       Real level,
+                                                     Discretization d)
+    : x0_(x0), speed_(speed), level_(level), volatility_(vol), discretization_(d) {
         QL_REQUIRE(volatility_ >= 0.0, "negative volatility given");
     }
 
@@ -38,4 +39,3 @@ namespace QuantLib {
     }
 
 }
-

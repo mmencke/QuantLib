@@ -25,8 +25,7 @@
 #define quantlib_cox_ingersoll_ross_hpp
 
 #include <ql/models/shortrate/onefactormodel.hpp>
-#include <ql/stochasticprocess.hpp>
-#include <ql/processes/eulerdiscretization.hpp>
+#include <ql/processes/cirhelperprocess.hpp>
 
 namespace QuantLib {
 
@@ -70,31 +69,11 @@ namespace QuantLib {
 
       private:
         class VolatilityConstraint;
-        class HelperProcess;
 
         Parameter& theta_;
         Parameter& k_;
         Parameter& sigma_;
         Parameter& r0_;
-    };
-
-    class CoxIngersollRoss::HelperProcess : public StochasticProcess1D {
-      public:
-        HelperProcess(Real theta, Real k, Real sigma, Real y0)
-        : y0_(y0), theta_(theta), k_(k), sigma_(sigma) {
-            discretization_ =
-                ext::shared_ptr<discretization>(new EulerDiscretization);
-        }
-
-        Real x0() const override { return y0_; }
-        Real drift(Time, Real y) const override {
-            return (0.5*theta_*k_ - 0.125*sigma_*sigma_)/y
-                - 0.5*k_*y;
-        }
-        Real diffusion(Time, Real) const override { return 0.5 * sigma_; }
-
-      private:
-        Real y0_, theta_, k_, sigma_;
     };
 
     //! %Dynamics of the short-rate under the Cox-Ingersoll-Ross model
@@ -114,7 +93,7 @@ namespace QuantLib {
                  Real sigma,
                  Real x0)
         : ShortRateDynamics(ext::shared_ptr<StochasticProcess1D>(
-                        new HelperProcess(theta, k, sigma, std::sqrt(x0)))) {}
+                        new CirHelperProcess(theta, k, sigma, std::sqrt(x0)))) {}
 
         Real variable(Time, Rate r) const override { return std::sqrt(r); }
         Real shortRate(Time, Real y) const override { return y * y; }
@@ -124,4 +103,3 @@ namespace QuantLib {
 
 
 #endif
-

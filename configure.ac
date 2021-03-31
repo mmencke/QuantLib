@@ -241,20 +241,20 @@ AC_MSG_RESULT([$ql_use_sessions])
 AC_MSG_CHECKING([whether to enable thread-safe observer pattern])
 AC_ARG_ENABLE([thread-safe-observer-pattern],
               AC_HELP_STRING([--enable-thread-safe-observer-pattern],
-                             [If enabled, thread-safe version of the 
-                              observer pattern will be used. You should 
-                              enable it if you want to use QuantLib 
-                              via the SWIG layer within the JVM or .NET 
-                              eco system or any environment with an 
+                             [If enabled, thread-safe version of the
+                              observer pattern will be used. You should
+                              enable it if you want to use QuantLib
+                              via the SWIG layer within the JVM or .NET
+                              eco system or any environment with an
                               async garbage collector. C++-17 is required
-                              if this option is used together with 
+                              if this option is used together with
                               --enable-std-pointers]),
               [ql_use_tsop=$enableval],
               [ql_use_tsop=no])
 AC_MSG_RESULT([$ql_use_tsop])
 if test "$ql_use_tsop" = "yes" ; then
    AC_DEFINE([QL_ENABLE_THREAD_SAFE_OBSERVER_PATTERN],[1],
-             [Define this if you want to enable 
+             [Define this if you want to enable
               thread-safe observer pattern.])
 fi
 
@@ -283,15 +283,15 @@ fi
 AC_MSG_CHECKING([whether to enable parallel unit test runner])
 AC_ARG_ENABLE([parallel-unit-test-runner],
               AC_HELP_STRING([--enable-parallel-unit-test-runner],
-                             [If enabled, a parallel unit test runner is used 
-                              to execute the C++ test suite. This will reduce 
+                             [If enabled, a parallel unit test runner is used
+                              to execute the C++ test suite. This will reduce
                               the runtime on multi core CPUs.]),
               [ql_use_parallel_test=$enableval],
               [ql_use_parallel_test=no])
 AC_MSG_RESULT([$ql_use_parallel_test])
 if test "$ql_use_parallel_test" = "yes" ; then
    AC_DEFINE([QL_ENABLE_PARALLEL_UNIT_TEST_RUNNER],[1],
-             [Define this if you want to enable 
+             [Define this if you want to enable
               the parallel unit test runner.])
    QL_CHECK_BOOST_VERSION_1_59_OR_HIGHER
    if test "$ql_use_tsop" != "yes" ; then
@@ -343,13 +343,13 @@ AC_MSG_RESULT([$ql_use_unity_build])
 AC_MSG_CHECKING([whether to enable intraday date and daycounters])
 AC_ARG_ENABLE([intraday],
               AC_HELP_STRING([--enable-intraday],
-                             [If enabled, date objects will support an intraday 
-                              datetime resolution down to microseconds. 
-                              Strickly monotone daycounters (Actual360, 
-                              Actual365Fixed and ActualActual) will take 
-                              the additional information into account 
-                              and allow for accurate intraday pricing. 
-                              If disabled (the default) the smallest 
+                             [If enabled, date objects will support an intraday
+                              datetime resolution down to microseconds.
+                              Strickly monotone daycounters (Actual360,
+                              Actual365Fixed and ActualActual) will take
+                              the additional information into account
+                              and allow for accurate intraday pricing.
+                              If disabled (the default) the smallest
                               resolution of date objects will be a single day.
                               Intraday datetime resolution is experimental.]),
               [ql_use_intraday=$enableval],
@@ -531,7 +531,7 @@ AC_CONFIG_FILES([
     ql/math/solvers1d/Makefile
     ql/math/statistics/Makefile
     ql/methods/Makefile
-    ql/methods/finitedifferences/Makefile    
+    ql/methods/finitedifferences/Makefile
     ql/methods/finitedifferences/meshers/Makefile
     ql/methods/finitedifferences/operators/Makefile
     ql/methods/finitedifferences/schemes/Makefile
@@ -602,4 +602,3 @@ AC_CONFIG_FILES([quantlib-config],[chmod +x quantlib-config])
 AC_CONFIG_FILES([QuantLib.spec])
 AC_CONFIG_FILES([quantlib.pc])
 AC_OUTPUT
-
