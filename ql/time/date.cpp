@@ -842,7 +842,7 @@ namespace QuantLib {
     // date formatting
 
     std::ostream& operator<<(std::ostream& out, const Date& d) {
-        return out << io::long_date(d);
+        return out << io::iso_date(d);
     }
 
     namespace detail {
