@@ -28,6 +28,7 @@
 
 #include <ql/stochasticprocess.hpp>
 #include <ql/math/distributions/normaldistribution.hpp>
+#include <ql/math/distributions/chisquaredistribution.hpp>
 
 namespace QuantLib {
 
@@ -43,7 +44,8 @@ namespace QuantLib {
       public:
         enum Discretization { None,
             FullTruncation,
-            QuadraticExponentialMartingale
+            QuadraticExponentialMartingale,
+            Exact
         };
         CoxIngersollRossProcess(Real speed,
                                  Volatility vol,
@@ -180,6 +182,18 @@ namespace QuantLib {
                     resultTrunc = ((u <= p) ? 0.0 : std::log((1-p)/(1-u))/beta);
               }
               break;
+            }
+            case Exact: {
+              CumulativeNormalDistribution dwDist; //despite the name, dw is standard normal
+              Real uniform = dwDist(dw); //transforming normal to uniform
+
+              Real c=(4*speed_)/(volatility_*volatility_*(1-std::exp(-speed_*dt)));
+              Real nu=(4*speed_*level_)/(volatility_*volatility_);
+              Real eta=c*x0*std::exp(-speed_*dt);
+
+              InverseNonCentralCumulativeChiSquareDistribution chi2(nu, eta,100);
+
+              resultTrunc = chi2(uniform)/c;
             }
         }
 

@@ -3,5 +3,4 @@
 
 #include <ql/pricingengines/credit/integralcdsengine.hpp>
 #include <ql/pricingengines/credit/isdacdsengine.hpp>
-#include <ql/pricingengines/credit/midpointcdsengine.hpp>
 

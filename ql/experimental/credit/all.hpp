@@ -46,4 +46,5 @@
 #include <ql/experimental/credit/spotlosslatentmodel.hpp>
 #include <ql/experimental/credit/spreadedhazardratecurve.hpp>
 #include <ql/experimental/credit/syntheticcdo.hpp>
+#include <ql/experimental/credit/mccircdsoptionengine.hpp>
 

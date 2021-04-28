@@ -25,7 +25,7 @@
 #define quantlib_cox_ingersoll_ross_hpp
 
 #include <ql/models/shortrate/onefactormodel.hpp>
-#include <ql/processes/cirhelperprocess.hpp>
+#include <ql/processes/coxingersollrossprocess.hpp>
 
 namespace QuantLib {
 
@@ -93,10 +93,10 @@ namespace QuantLib {
                  Real sigma,
                  Real x0)
         : ShortRateDynamics(ext::shared_ptr<StochasticProcess1D>(
-                        new CirHelperProcess(theta, k, sigma, std::sqrt(x0)))) {}
+                        new CoxIngersollRossProcess(k, sigma, x0, theta, CoxIngersollRossProcess::Exact))) {}
 
-        Real variable(Time, Rate r) const override { return std::sqrt(r); }
-        Real shortRate(Time, Real y) const override { return y * y; }
+        Real variable(Time, Rate r) const override { return r; }
+        Real shortRate(Time, Real y) const override { return y; }
     };
 
 }

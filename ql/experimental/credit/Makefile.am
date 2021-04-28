@@ -48,7 +48,8 @@ this_include_HEADERS = \
     saddlepointlossmodel.hpp \
     spotlosslatentmodel.hpp \
     spreadedhazardratecurve.hpp \
-    syntheticcdo.hpp
+    syntheticcdo.hpp \
+		mccircdsoptionengine.hpp
 
 cpp_files = \
     basecorrelationstructure.cpp \
@@ -78,7 +79,8 @@ cpp_files = \
     riskyassetswap.cpp \
     riskyassetswapoption.cpp \
     riskybond.cpp \
-    syntheticcdo.cpp
+    syntheticcdo.cpp \
+		mccircdsoptionengine.cpp
 
 if UNITY_BUILD
 
@@ -113,4 +115,3 @@ all.hpp: Makefile.am
 	subdirs='$(SUBDIRS)'; for i in $$subdirs; do \
 		echo "#include <${subdir}/$$i/all.hpp>" >> ${srcdir}/$@; \
 	done
-

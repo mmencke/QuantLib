@@ -132,7 +132,7 @@ namespace QuantLib {
         // Set the maturity date.
         maturity_ = schedule.dates().back();
 
-        // Deal with the accrual rebate. We use the standard conventions for accrual calculation introduced with the 
+        // Deal with the accrual rebate. We use the standard conventions for accrual calculation introduced with the
         // CDS Big Bang in 2009.
         if (rebatesAccrual) {
 
@@ -148,7 +148,7 @@ namespace QuantLib {
                         rebateAmount = frc->accruedAmount(refDate);
                         break;
                     } else if (refDate == cf->date() && i < leg_.size() - 1) {
-                        // If not the last coupon and trade date + 1 is the next coupon payment date, 
+                        // If not the last coupon and trade date + 1 is the next coupon payment date,
                         // the accrual is 0 so do nothing.
                         break;
                     } else {

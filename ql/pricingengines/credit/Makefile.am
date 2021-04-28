@@ -5,8 +5,7 @@ this_includedir=${includedir}/${subdir}
 this_include_HEADERS = \
     all.hpp \
     integralcdsengine.hpp \
-    isdacdsengine.hpp \
-    midpointcdsengine.hpp
+    isdacdsengine.hpp 
 
 cpp_files = \
     integralcdsengine.cpp \
@@ -46,4 +45,3 @@ all.hpp: Makefile.am
 	subdirs='$(SUBDIRS)'; for i in $$subdirs; do \
 		echo "#include <${subdir}/$$i/all.hpp>" >> ${srcdir}/$@; \
 	done
-

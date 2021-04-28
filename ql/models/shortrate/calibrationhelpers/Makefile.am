@@ -5,11 +5,13 @@ this_includedir=${includedir}/${subdir}
 this_include_HEADERS = \
     all.hpp \
     caphelper.hpp \
-    swaptionhelper.hpp
+    swaptionhelper.hpp \
+		cdsoptionhelper.hpp
 
 cpp_files = \
     caphelper.cpp \
-    swaptionhelper.cpp
+    swaptionhelper.cpp \
+		cdsoptionhelper.cpp
 
 if UNITY_BUILD
 
@@ -44,4 +46,3 @@ all.hpp: Makefile.am
 	subdirs='$(SUBDIRS)'; for i in $$subdirs; do \
 		echo "#include <${subdir}/$$i/all.hpp>" >> ${srcdir}/$@; \
 	done
-
