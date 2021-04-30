@@ -21,7 +21,7 @@
 #include <ql/experimental/credit/mccircdsoptionengine.hpp>
 #include <ql/time/daycounters/actual360.hpp>
 #include <ql/methods/montecarlo/montecarlomodel.hpp>
-#include <ql/math/interpolations/cubicinterpolation.hpp>
+#include <ql/math/interpolations/linearinterpolation.hpp>
 #include <ql/termstructures/credit/interpolatedsurvivalprobabilitycurve.hpp>
 
 #include <utility>
@@ -79,9 +79,15 @@ namespace QuantLib {
             dates.push_back(exerciseDate+j*dt*365);
             survivalProbabilities.push_back(model_->discountBond(t,t+j*dt,cirValue));
           }
+          //correct probabilities to avoid negative hazard rates
+          for(int j=0;j<(survivalProbabilities.size()-1);j++) {
+            if(survivalProbabilities[j+1]>survivalProbabilities[j]) {
+              survivalProbabilities[j+1]=survivalProbabilities[j];
+            }
+          }
 
-          ext::shared_ptr<InterpolatedSurvivalProbabilityCurve<Cubic>> probabilityCurve(
-            new InterpolatedSurvivalProbabilityCurve<Cubic>(dates, survivalProbabilities, Actual360()));
+          ext::shared_ptr<InterpolatedSurvivalProbabilityCurve<Linear>> probabilityCurve(
+            new InterpolatedSurvivalProbabilityCurve<Linear>(dates, survivalProbabilities, Actual360()));
 
           probabilityCurve->enableExtrapolation(true);
 

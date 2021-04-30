@@ -26,9 +26,10 @@ namespace QuantLib {
     ExtendedCoxIngersollRoss::ExtendedCoxIngersollRoss(
                               const Handle<YieldTermStructure>& termStructure,
                               Real theta, Real k, Real sigma, Real x0,
-                              bool withFellerConstraint)
-    : CoxIngersollRoss(x0, theta, k, sigma, withFellerConstraint),
-      TermStructureConsistentModel(termStructure) {
+                              bool withFellerConstraint,
+                            CoxIngersollRossProcess::Discretization d)
+    : CoxIngersollRoss(x0, theta, k, sigma, withFellerConstraint, d),
+      TermStructureConsistentModel(termStructure){
         generateArguments();
     }
 
@@ -36,7 +37,7 @@ namespace QuantLib {
                                                  const TimeGrid& grid) const {
         TermStructureFittingParameter phi(termStructure());
         ext::shared_ptr<Dynamics> numericDynamics(
-                              new Dynamics(phi, theta(), k(), sigma(), x0()));
+                              new Dynamics(phi, theta(), k(), sigma(), x0(),discretization()));
 
         ext::shared_ptr<TrinomialTree> trinomial(
                    new TrinomialTree(numericDynamics->process(), grid, true));
@@ -102,4 +103,3 @@ namespace QuantLib {
     }
 
 }
-

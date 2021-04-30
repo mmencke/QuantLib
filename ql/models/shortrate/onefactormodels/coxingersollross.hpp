@@ -46,7 +46,8 @@ namespace QuantLib {
                          Real theta = 0.1,
                          Real k = 0.1,
                          Real sigma = 0.1,
-                         bool withFellerConstraint = true);
+                         bool withFellerConstraint = true,
+                         CoxIngersollRossProcess::Discretization d = CoxIngersollRossProcess::Exact);
 
         Real discountBondOption(Option::Type type,
                                 Real strike,
@@ -56,6 +57,7 @@ namespace QuantLib {
         ext::shared_ptr<ShortRateDynamics> dynamics() const override;
 
         ext::shared_ptr<Lattice> tree(const TimeGrid& grid) const override;
+
 
         class Dynamics;
       protected:
@@ -67,6 +69,8 @@ namespace QuantLib {
         Real sigma() const { return sigma_(0.0); }
         Real x0() const { return r0_(0.0); }
 
+        CoxIngersollRossProcess::Discretization discretization() const {return discretization_;}
+
       private:
         class VolatilityConstraint;
 
@@ -74,6 +78,7 @@ namespace QuantLib {
         Parameter& k_;
         Parameter& sigma_;
         Parameter& r0_;
+        CoxIngersollRossProcess::Discretization discretization_;
     };
 
     //! %Dynamics of the short-rate under the Cox-Ingersoll-Ross model
@@ -91,9 +96,10 @@ namespace QuantLib {
         Dynamics(Real theta,
                  Real k,
                  Real sigma,
-                 Real x0)
+                 Real x0,
+                 CoxIngersollRossProcess::Discretization d)
         : ShortRateDynamics(ext::shared_ptr<StochasticProcess1D>(
-                        new CoxIngersollRossProcess(k, sigma, x0, theta, CoxIngersollRossProcess::Exact))) {}
+                        new CoxIngersollRossProcess(k, sigma, x0, theta, d))) {}
 
         Real variable(Time, Rate r) const override { return r; }
         Real shortRate(Time, Real y) const override { return y; }

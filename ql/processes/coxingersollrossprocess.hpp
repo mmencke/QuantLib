@@ -24,11 +24,13 @@
 #ifndef quantlib_coxingersollross_process_hpp
 #define quantlib_coxingersollross_process_hpp
 
-#include <iostream>
+//#include <iostream>
 
 #include <ql/stochasticprocess.hpp>
 #include <ql/math/distributions/normaldistribution.hpp>
-#include <ql/math/distributions/chisquaredistribution.hpp>
+//#include <ql/math/distributions/chisquaredistribution.hpp>
+
+#include <boost/math/distributions/non_central_chi_squared.hpp>
 
 namespace QuantLib {
 
@@ -185,15 +187,17 @@ namespace QuantLib {
             }
             case Exact: {
               CumulativeNormalDistribution dwDist; //despite the name, dw is standard normal
-              Real uniform = dwDist(dw); //transforming normal to uniform
+              Real uniform= dwDist(dw); //transforming normal to uniform
 
               Real c=(4*speed_)/(volatility_*volatility_*(1-std::exp(-speed_*dt)));
               Real nu=(4*speed_*level_)/(volatility_*volatility_);
               Real eta=c*x0*std::exp(-speed_*dt);
 
-              InverseNonCentralCumulativeChiSquareDistribution chi2(nu, eta,100);
+              //we had some strange errors using QuantLib's Chi2 distribution, so we use the one from boost
+              boost::math::non_central_chi_squared_distribution<double,  boost::math::policies::policy<>> chi2(nu, eta);
+              //InverseNonCentralCumulativeChiSquareDistribution chi2(nu, eta);
 
-              resultTrunc = chi2(uniform)/c;
+              resultTrunc = quantile(chi2,uniform)/c;
             }
         }
 

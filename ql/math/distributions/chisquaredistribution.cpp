@@ -103,8 +103,8 @@ namespace QuantLib {
     }
 
     InverseNonCentralCumulativeChiSquareDistribution::
-      InverseNonCentralCumulativeChiSquareDistribution(Real df, Real ncp, 
-                                             Size maxEvaluations, 
+      InverseNonCentralCumulativeChiSquareDistribution(Real df, Real ncp,
+                                             Size maxEvaluations,
                                              Real accuracy)
     : nonCentralDist_(df, ncp),
       guess_(df+ncp),
@@ -121,13 +121,12 @@ namespace QuantLib {
             upper*=2.0;
             --evaluations;
         }
-
         // use a Brent solver for the rest
         Brent solver;
         solver.setMaxEvaluations(evaluations);
         return solver.solve(compose(subtract<Real>(x),
                                     nonCentralDist_),
-                            accuracy_, 0.75*upper, 
+                            accuracy_, 0.75*upper,
                             (evaluations == maxEvaluations_)? 0.0: 0.5*upper,
                             upper);
     }
