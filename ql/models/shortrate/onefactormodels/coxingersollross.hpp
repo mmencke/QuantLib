@@ -47,7 +47,7 @@ namespace QuantLib {
                          Real k = 0.1,
                          Real sigma = 0.1,
                          bool withFellerConstraint = true,
-                         CoxIngersollRossProcess::Discretization d = CoxIngersollRossProcess::Exact);
+                         CoxIngersollRossProcess::Discretization d = CoxIngersollRossProcess::QuadraticExponential);
 
         Real discountBondOption(Option::Type type,
                                 Real strike,

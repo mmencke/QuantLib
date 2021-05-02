@@ -52,7 +52,7 @@ namespace QuantLib {
                               Real sigma = 0.1,
                               Real x0 = 0.05,
                               bool withFellerConstraint = true,
-                              CoxIngersollRossProcess::Discretization d = CoxIngersollRossProcess::Exact);
+                              CoxIngersollRossProcess::Discretization d = CoxIngersollRossProcess::QuadraticExponential);
 
         ext::shared_ptr<Lattice> tree(const TimeGrid& grid) const override;
 
