@@ -3,7 +3,6 @@
 
 #include <ql/processes/batesprocess.hpp>
 #include <ql/processes/blackscholesprocess.hpp>
-#include <ql/processes/cirhelperprocess.hpp>
 #include <ql/processes/endeulerdiscretization.hpp>
 #include <ql/processes/eulerdiscretization.hpp>
 #include <ql/processes/forwardmeasureprocess.hpp>

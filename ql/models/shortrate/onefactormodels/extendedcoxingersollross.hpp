@@ -25,7 +25,6 @@
 #define quantlib_extended_cox_ingersoll_ross_hpp
 
 #include <ql/models/shortrate/onefactormodels/coxingersollross.hpp>
-#include <ql/processes/coxingersollrossprocess.hpp>
 #include <utility>
 
 namespace QuantLib {
@@ -51,8 +50,7 @@ namespace QuantLib {
                               Real k = 0.1,
                               Real sigma = 0.1,
                               Real x0 = 0.05,
-                              bool withFellerConstraint = true,
-                              CoxIngersollRossProcess::Discretization d = CoxIngersollRossProcess::QuadraticExponential);
+                              bool withFellerConstraint = true);
 
         ext::shared_ptr<Lattice> tree(const TimeGrid& grid) const override;
 
@@ -86,8 +84,8 @@ namespace QuantLib {
     class ExtendedCoxIngersollRoss::Dynamics
         : public CoxIngersollRoss::Dynamics {
       public:
-        Dynamics(Parameter phi, Real theta, Real k, Real sigma, Real x0,CoxIngersollRossProcess::Discretization d)
-        : CoxIngersollRoss::Dynamics(theta, k, sigma, x0, d), phi_(std::move(phi)) {}
+        Dynamics(Parameter phi, Real theta, Real k, Real sigma, Real x0)
+        : CoxIngersollRoss::Dynamics(theta, k, sigma, x0), phi_(std::move(phi)) {}
 
         Real variable(Time t, Rate r) const override { return r - phi_(t); }
         Real shortRate(Time t, Real y) const override { return y + phi_(t); }
@@ -144,7 +142,7 @@ namespace QuantLib {
     inline ext::shared_ptr<OneFactorModel::ShortRateDynamics>
     ExtendedCoxIngersollRoss::dynamics() const {
         return ext::shared_ptr<ShortRateDynamics>(
-                            new Dynamics(phi_, theta(), k() , sigma(), x0(),discretization()));
+                            new Dynamics(phi_, theta(), k() , sigma(), x0()));
     }
 
     inline void ExtendedCoxIngersollRoss::generateArguments() {

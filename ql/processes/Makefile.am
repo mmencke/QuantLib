@@ -6,7 +6,6 @@ this_include_HEADERS = \
 	all.hpp \
 	batesprocess.hpp \
 	blackscholesprocess.hpp \
-	cirhelperprocess.hpp \
 	endeulerdiscretization.hpp \
 	eulerdiscretization.hpp \
 	forwardmeasureprocess.hpp \

@@ -42,11 +42,10 @@ namespace QuantLib {
 
     CoxIngersollRoss::CoxIngersollRoss(Rate r0, Real theta,
                                        Real k, Real sigma,
-                                       bool withFellerConstraint,
-                                       CoxIngersollRossProcess::Discretization d)
+                                       bool withFellerConstraint)
     : OneFactorAffineModel(4),
       theta_(arguments_[0]), k_(arguments_[1]),
-      sigma_(arguments_[2]), r0_(arguments_[3]), discretization_(d) {
+      sigma_(arguments_[2]), r0_(arguments_[3]) {
         theta_ = ConstantParameter(theta, PositiveConstraint());
         k_ = ConstantParameter(k, PositiveConstraint());
         if (withFellerConstraint)
@@ -59,7 +58,7 @@ namespace QuantLib {
     ext::shared_ptr<OneFactorModel::ShortRateDynamics>
     CoxIngersollRoss::dynamics() const {
         return ext::shared_ptr<ShortRateDynamics>(
-                                  new Dynamics(theta(), k() , sigma(), x0(),discretization()));
+                                  new Dynamics(theta(), k() , sigma(), x0()));
     }
 
     Real CoxIngersollRoss::A(Time t, Time T) const {
