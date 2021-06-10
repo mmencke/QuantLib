@@ -335,6 +335,7 @@ set(QuantLib_SRC
     instruments/varianceswap.cpp
     instruments/yearonyearinflationswap.cpp
     instruments/zerocouponinflationswap.cpp
+    instruments/zerocouponswap.cpp
     interestrate.cpp
     legacy/libormarketmodels/lfmcovarparam.cpp
     legacy/libormarketmodels/lfmcovarproxy.cpp
@@ -565,7 +566,6 @@ set(QuantLib_SRC
     models/marketmodels/evolvers/lognormalfwdrateiballand.cpp
     models/marketmodels/evolvers/lognormalfwdrateipc.cpp
     models/marketmodels/evolvers/lognormalfwdratepc.cpp
-    models/marketmodels/evolvers/marketmodelvolprocess.cpp
     models/marketmodels/evolvers/normalfwdratepc.cpp
     models/marketmodels/evolvers/svddfwdratepc.cpp
     models/marketmodels/evolvers/volprocesses/squarerootandersen.cpp
@@ -588,7 +588,6 @@ set(QuantLib_SRC
     models/marketmodels/models/piecewiseconstantabcdvariance.cpp
     models/marketmodels/models/piecewiseconstantvariance.cpp
     models/marketmodels/models/pseudorootfacade.cpp
-    models/marketmodels/models/volatilityinterpolationspecifier.cpp
     models/marketmodels/models/volatilityinterpolationspecifierabcd.cpp
     models/marketmodels/pathwiseaccountingengine.cpp
     models/marketmodels/pathwisediscounter.cpp
@@ -1398,6 +1397,7 @@ set(QuantLib_HDR
     instruments/varianceswap.hpp
     instruments/yearonyearinflationswap.hpp
     instruments/zerocouponinflationswap.hpp
+    instruments/zerocouponswap.hpp
     interestrate.hpp
     legacy/all.hpp
     legacy/libormarketmodels/all.hpp
