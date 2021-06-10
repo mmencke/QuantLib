@@ -28,15 +28,16 @@
 
 namespace QuantLib {
 
-    McCirCdsOptionEngine::McCirCdsOptionEngine(ext::shared_ptr<CoxIngersollRoss> model,
-      Real nSamples,
-      Real seed,
+    McCirCdsOptionEngine::McCirCdsOptionEngine(
+        ext::shared_ptr<CoxIngersollRoss> model,
+        Real nSamples,
+        Real seed,
 
-                                         Real recoveryRate,
-                                         Handle<YieldTermStructure> discountCurve,
-                                         const boost::optional<bool>& includeSettlementDateFlows)
-    : model_(model), nSamples_(nSamples), seed_(seed),recoveryRate_(recoveryRate),
-      discountCurve_(std::move(discountCurve)),
+        Real recoveryRate,
+        Handle<YieldTermStructure> discountCurve,
+        const boost::optional<bool>& includeSettlementDateFlows)
+    : model_(std::move(std::move(model))), nSamples_(nSamples), seed_(seed),
+      recoveryRate_(recoveryRate), discountCurve_(std::move(discountCurve)),
       includeSettlementDateFlows_(includeSettlementDateFlows) {
         registerWith(discountCurve_);
     }

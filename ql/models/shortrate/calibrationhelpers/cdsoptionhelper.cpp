@@ -29,24 +29,26 @@
 
 namespace QuantLib {
 
-    CdsOptionHelper::CdsOptionHelper(const Period& maturity,
-                   const Period& length,
-                   const Handle<Quote>& volatility,
-                   Real recoveryRate,
-                   Handle<DefaultProbabilityTermStructure> defaultProbabilityCurve,
-                   Handle<YieldTermStructure> discountCurve,
-                   BlackCalibrationHelper::CalibrationErrorType errorType,
-                   Frequency paymentFrequency ,
-                   Calendar calendar,
-                   BusinessDayConvention paymentConvention,
-                   BusinessDayConvention terminationDateConvention,
-                   DateGeneration::Rule dateRule,
-                   DayCounter dayCounter)
-    : BlackCalibrationHelper(volatility, errorType),
-    maturity_(maturity), length_(length), recoveryRate_(recoveryRate),
-    defaultProbabilityCurve_(std::move(defaultProbabilityCurve)), discountCurve_(std::move(discountCurve)),
-    paymentFrequency_(paymentFrequency), calendar_(calendar), paymentConvention_(paymentConvention),
-    terminationDateConvention_(terminationDateConvention), dateRule_(dateRule), dayCounter_(dayCounter) {
+    CdsOptionHelper::CdsOptionHelper(
+        const Period& maturity,
+        const Period& length,
+        const Handle<Quote>& volatility,
+        Real recoveryRate,
+        Handle<DefaultProbabilityTermStructure> defaultProbabilityCurve,
+        Handle<YieldTermStructure> discountCurve,
+        BlackCalibrationHelper::CalibrationErrorType errorType,
+        Frequency paymentFrequency,
+        Calendar calendar,
+        BusinessDayConvention paymentConvention,
+        BusinessDayConvention terminationDateConvention,
+        DateGeneration::Rule dateRule,
+        DayCounter dayCounter)
+    : BlackCalibrationHelper(volatility, errorType), maturity_(maturity), length_(length),
+      recoveryRate_(recoveryRate), defaultProbabilityCurve_(std::move(defaultProbabilityCurve)),
+      discountCurve_(std::move(discountCurve)), paymentFrequency_(paymentFrequency),
+      calendar_(std::move(std::move(calendar))), paymentConvention_(paymentConvention),
+      terminationDateConvention_(terminationDateConvention), dateRule_(dateRule),
+      dayCounter_(std::move(std::move(dayCounter))) {
         registerWith(defaultProbabilityCurve_);
         registerWith(discountCurve_);
     }
