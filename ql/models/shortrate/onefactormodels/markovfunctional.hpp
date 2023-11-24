@@ -129,9 +129,7 @@ namespace QuantLib {
                 CustomSmile = 1 << 9
             };
 
-            ModelSettings()
-            : adjustments_(KahaleSmile | SmileExponentialExtrapolation),
-              smileMoneynessCheckpoints_(std::vector<Real>()) {}
+            ModelSettings() : adjustments_(KahaleSmile | SmileExponentialExtrapolation) {}
 
             ModelSettings(Size yGridPoints,
                           Real yStdDevs,
@@ -332,8 +330,6 @@ namespace QuantLib {
 
         const Array &volatility() const { return sigma_.params(); }
 
-        // VC++ warns when overriding a deprecated method
-        QL_DEPRECATED_DISABLE_WARNING
         void calibrate(const std::vector<ext::shared_ptr<CalibrationHelper> >& helpers,
                        OptimizationMethod& method,
                        const EndCriteria& endCriteria,
@@ -351,7 +347,7 @@ namespace QuantLib {
                        const EndCriteria& endCriteria,
                        const Constraint& constraint = Constraint(),
                        const std::vector<Real>& weights = std::vector<Real>(),
-                       const std::vector<bool>& fixParameters = std::vector<bool>()) override {
+                       const std::vector<bool>& fixParameters = std::vector<bool>()) {
 
             std::vector<ext::shared_ptr<CalibrationHelper> > tmp(helpers.size());
             for (Size i=0; i<helpers.size(); ++i)
@@ -359,7 +355,6 @@ namespace QuantLib {
 
             calibrate(tmp, method, endCriteria, constraint, weights, fixParameters);
         }
-        QL_DEPRECATED_ENABLE_WARNING
 
         void update() override { LazyObject::update(); }
 
@@ -398,7 +393,7 @@ namespace QuantLib {
             updateNumeraireTabulation();
         }
 
-        Disposable<std::vector<bool> > FixedFirstVolatility() const {
+        std::vector<bool> FixedFirstVolatility() const {
             std::vector<bool> c(volatilities_.size(), false);
             c[0] = true;
             return c;
@@ -428,9 +423,9 @@ namespace QuantLib {
                                 const Option::Type& type,
                                 Real strike) const;
 
-        Disposable<Array> deflatedZerobondArray(Time T, Time t, const Array& y) const;
-        Disposable<Array> numeraireArray(Time t, const Array& y) const;
-        Disposable<Array> zerobondArray(Time T, Time t, const Array& y) const;
+        Array deflatedZerobondArray(Time T, Time t, const Array& y) const;
+        Array numeraireArray(Time t, const Array& y) const;
+        Array zerobondArray(Time T, Time t, const Array& y) const;
 
         Real deflatedZerobond(Time T, Time t = 0.0, Real y = 0.0) const;
 
@@ -482,8 +477,6 @@ namespace QuantLib {
             bool zeroFixingDays = false,
             const ext::shared_ptr<SwapIndex>& swapIdx = ext::shared_ptr<SwapIndex>()) const;
 
-        class ZeroHelper;
-        friend class ZeroHelper;
         class ZeroHelper {
           public:
             ZeroHelper(const MarkovFunctional *model, const Date &expiry,

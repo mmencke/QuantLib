@@ -23,7 +23,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "dates.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/time/date.hpp>
 #include <ql/time/timeunit.hpp>
@@ -32,14 +32,17 @@
 #include <ql/time/asx.hpp>
 #include <ql/utilities/dataparsers.hpp>
 
-#include <boost/unordered_set.hpp>
-#include <boost/functional/hash.hpp>
 #include <sstream>
+#include <unordered_set>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-void DateTest::ecbDates() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(DateTest)
+
+BOOST_AUTO_TEST_CASE(ecbDates) {
     BOOST_TEST_MESSAGE("Testing ECB dates...");
 
     std::set<Date> knownDates = ECB::knownDates();
@@ -84,7 +87,7 @@ void DateTest::ecbDates() {
         BOOST_FAIL("unable to add an EBC date");
 }
 
-void DateTest::immDates() {
+BOOST_AUTO_TEST_CASE(immDates) {
     BOOST_TEST_MESSAGE("Testing IMM dates...");
 
     const std::string IMMcodes[] = {
@@ -143,7 +146,7 @@ void DateTest::immDates() {
     }
 }
 
-void DateTest::asxDates() {
+BOOST_AUTO_TEST_CASE(asxDates) {
     BOOST_TEST_MESSAGE("Testing ASX dates...");
 
     const std::string ASXcodes[] = {
@@ -201,7 +204,7 @@ void DateTest::asxDates() {
     }
 }
 
-void DateTest::testConsistency() {
+BOOST_AUTO_TEST_CASE(testConsistency) {
 
     BOOST_TEST_MESSAGE("Testing dates...");
 
@@ -303,7 +306,7 @@ void DateTest::testConsistency() {
 
 }
 
-void DateTest::isoDates() {
+BOOST_AUTO_TEST_CASE(isoDates) {
     BOOST_TEST_MESSAGE("Testing ISO dates...");
     std::string input_date("2006-01-15");
     Date d = DateParser::parseISO(input_date);
@@ -318,7 +321,8 @@ void DateTest::isoDates() {
     }
 }
 
-void DateTest::parseDates() {
+#ifndef QL_PATCH_SOLARIS
+BOOST_AUTO_TEST_CASE(parseDates) {
     BOOST_TEST_MESSAGE("Testing parsing of dates...");
 
     std::string input_date("2006-01-15");
@@ -351,9 +355,10 @@ void DateTest::parseDates() {
                    << " parsed date: " << d);
     }
 }
+#endif
 
-void DateTest::intraday() {
 #ifdef QL_HIGH_RESOLUTION_DATE
+BOOST_AUTO_TEST_CASE(intraday) {
 
     BOOST_TEST_MESSAGE("Testing intraday information of dates...");
 
@@ -406,16 +411,33 @@ void DateTest::intraday() {
     BOOST_CHECK_MESSAGE(s.str() == std::string("2015-02-07T01:04:02,003004"),
         "datetime to string failed to reproduce expected result");
 
-#endif
-}
+    const Date d3 = Date(10, April, 2023, 11, 43, 13, 234, 253);
 
-void DateTest::canHash() {
+    BOOST_CHECK_MESSAGE(d3 + Period(23, Hours) ==
+            Date(11, April, 2023, 10, 43, 13, 234, 253), "failed to add hours");
+
+    BOOST_CHECK_MESSAGE(d3 + Period(2, Minutes) ==
+            Date(10, April, 2023, 11, 45, 13, 234, 253), "failed to add minutes");
+
+    BOOST_CHECK_MESSAGE(d3 + Period(-2, Seconds) ==
+            Date(10, April, 2023, 11, 43, 11, 234, 253), "failed to add seconds");
+
+    BOOST_CHECK_MESSAGE(d3 + Period(-20, Milliseconds) ==
+            Date(10, April, 2023, 11, 43, 13, 214, 253), "failed to add milliseconds");
+
+    BOOST_CHECK_MESSAGE(d3 + Period(20, Microseconds) ==
+            Date(10, April, 2023, 11, 43, 13, 234, 273), "failed to add microseconds");
+
+}
+#endif
+
+BOOST_AUTO_TEST_CASE(canHash) {
     BOOST_TEST_MESSAGE("Testing hashing of dates...");
 
     Date start_date = Date(1, Jan, 2020);
     int nb_tests = 500;
 
-    boost::hash<Date> hasher;
+    std::hash<Date> hasher;
 
     // Check hash values
     for (int i = 0; i < nb_tests; ++i) {
@@ -442,7 +464,7 @@ void DateTest::canHash() {
     }
 
     // Check if Date can be used as unordered_set key
-    boost::unordered_set<Date> set;
+    std::unordered_set<Date> set;
     set.insert(start_date);
 
     if (set.count(start_date) == 0) {
@@ -450,19 +472,6 @@ void DateTest::canHash() {
     }
 }
 
-test_suite* DateTest::suite(SpeedLevel speed) {
-    auto* suite = BOOST_TEST_SUITE("Date tests");
+BOOST_AUTO_TEST_SUITE_END()
 
-    suite->add(QUANTLIB_TEST_CASE(&DateTest::testConsistency));
-    suite->add(QUANTLIB_TEST_CASE(&DateTest::ecbDates));
-    suite->add(QUANTLIB_TEST_CASE(&DateTest::immDates));
-    suite->add(QUANTLIB_TEST_CASE(&DateTest::asxDates));
-    suite->add(QUANTLIB_TEST_CASE(&DateTest::isoDates));
-    #ifndef QL_PATCH_SOLARIS
-    suite->add(QUANTLIB_TEST_CASE(&DateTest::parseDates));
-    #endif
-    suite->add(QUANTLIB_TEST_CASE(&DateTest::intraday));
-    suite->add(QUANTLIB_TEST_CASE(&DateTest::canHash));
-
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

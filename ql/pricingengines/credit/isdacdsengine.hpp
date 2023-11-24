@@ -28,6 +28,7 @@
 #include <ql/instruments/creditdefaultswap.hpp>
 #include <ql/termstructures/yieldtermstructure.hpp>
 #include <ql/termstructures/defaulttermstructure.hpp>
+#include <ql/optional.hpp>
 
 namespace QuantLib {
 
@@ -86,7 +87,7 @@ namespace QuantLib {
             specifications.
 
             To be precisely consistent with the ISDA specification
-                static bool IborCoupon::usingAtParCoupons();
+                bool IborCoupon::Settings::usingAtParCoupons();
             must be true. This is not checked in order not to
             kill the engine completely in this case.
 
@@ -97,7 +98,7 @@ namespace QuantLib {
         IsdaCdsEngine(Handle<DefaultProbabilityTermStructure> probability,
                       Real recoveryRate,
                       Handle<YieldTermStructure> discountCurve,
-                      const boost::optional<bool>& includeSettlementDateFlows = boost::none,
+                      const ext::optional<bool>& includeSettlementDateFlows = ext::nullopt,
                       NumericalFix numericalFix = Taylor,
                       AccrualBias accrualBias = HalfDayBias,
                       ForwardsInCouponPeriod forwardsInCouponPeriod = Piecewise);
@@ -111,7 +112,7 @@ namespace QuantLib {
         Handle<DefaultProbabilityTermStructure> probability_;
         const Real recoveryRate_;
         Handle<YieldTermStructure> discountCurve_;
-        const boost::optional<bool> includeSettlementDateFlows_;
+        const ext::optional<bool> includeSettlementDateFlows_;
         const NumericalFix numericalFix_;
         const AccrualBias accrualBias_;
         const ForwardsInCouponPeriod forwardsInCouponPeriod_;

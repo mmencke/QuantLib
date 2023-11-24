@@ -43,8 +43,7 @@ namespace QuantLib {
             Position::Type putPosition = Position::Long,
             bool isPutATMIncluded = false,
             Rate putDigitalPayoff = Null<Rate>(),
-            const ext::shared_ptr<DigitalReplication> &replication =
-                ext::shared_ptr<DigitalReplication>(new DigitalReplication),
+            const ext::shared_ptr<DigitalReplication> &replication = {},
             bool nakedOption = false);
 
         //! \name Visitability
@@ -81,9 +80,12 @@ namespace QuantLib {
         DigitalCmsSpreadLeg& withPutATM(bool flag = true);
         DigitalCmsSpreadLeg& withPutPayoffs(Rate payoff);
         DigitalCmsSpreadLeg& withPutPayoffs(const std::vector<Rate>& payoffs);
-        DigitalCmsSpreadLeg& withReplication(
-            const ext::shared_ptr<DigitalReplication> &replication =
-                ext::shared_ptr<DigitalReplication>(new DigitalReplication));
+        DigitalCmsSpreadLeg& withReplication(const ext::shared_ptr<DigitalReplication>&);
+        /*! \deprecated Use the overload that passes a replication instead.
+                        Deprecated in version 1.32.
+        */
+        [[deprecated("Use the overload that passes a replication instead")]]
+        DigitalCmsSpreadLeg& withReplication();
         DigitalCmsSpreadLeg& withNakedOption(bool nakedOption = true);
 
         operator Leg() const;
@@ -92,17 +94,17 @@ namespace QuantLib {
         ext::shared_ptr<SwapSpreadIndex> index_;
         std::vector<Real> notionals_;
         DayCounter paymentDayCounter_;
-        BusinessDayConvention paymentAdjustment_;
+        BusinessDayConvention paymentAdjustment_ = Following;
         std::vector<Natural> fixingDays_;
         std::vector<Real> gearings_;
         std::vector<Spread> spreads_;
-        bool inArrears_;
+        bool inArrears_ = false;
         std::vector<Rate> callStrikes_, callPayoffs_;
-        Position::Type longCallOption_;
-        bool callATM_;
+        Position::Type longCallOption_ = Position::Long;
+        bool callATM_ = false;
         std::vector<Rate> putStrikes_, putPayoffs_;
-        Position::Type longPutOption_;
-        bool putATM_;
+        Position::Type longPutOption_ = Position::Long;
+        bool putATM_ = false;
         ext::shared_ptr<DigitalReplication> replication_;
         bool nakedOption_;
     };

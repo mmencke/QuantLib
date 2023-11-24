@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2001, 2002, 2003 Sadruddin Rejeb
+ Copyright (C) 2021 Magnus Mencke
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -32,7 +33,7 @@ namespace QuantLib {
     //! Cox-Ingersoll-Ross model class.
     /*! This class implements the Cox-Ingersoll-Ross model defined by
         \f[
-            dr_t = k(\theta - r_t)dt + \sqrt{r_t}\sigma dW_t .
+            dr(t) = k(\theta - r(t))dt + \sigma \sqrt{r(t)} dW(t)
         \f]
 
         \bug this class was not tested enough to guarantee
@@ -78,13 +79,9 @@ namespace QuantLib {
     };
 
     //! %Dynamics of the short-rate under the Cox-Ingersoll-Ross model
-    /*! The state variable \f$ y_t \f$ will here be the square-root of the
-        short-rate. It satisfies the following stochastic equation
-        \f[
-            dy_t=\left[
-                    (\frac{k\theta }{2}+\frac{\sigma ^2}{8})\frac{1}{y_t}-
-                    \frac{k}{2}y_t \right] d_t+ \frac{\sigma }{2}dW_{t}
-        \f].
+    /*! The short-rate is simulated directly using the Quadratic Exponential
+        discretization scheme as described in Leif Andersen,
+        Efficient Simulation of the Heston Stochastic Volatility Model.
     */
     class CoxIngersollRoss::Dynamics :
         public OneFactorModel::ShortRateDynamics {

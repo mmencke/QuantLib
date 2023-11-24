@@ -23,7 +23,6 @@
 */
 
 #include <ql/math/distributions/normaldistribution.hpp>
-#include <ql/math/functional.hpp>
 #include <ql/math/solvers1d/brent.hpp>
 #include <ql/methods/finitedifferences/utilities/gbsmrndcalculator.hpp>
 #include <ql/pricingengines/blackcalculator.hpp>
@@ -97,7 +96,7 @@ namespace QuantLib {
                 << cdf(lower, t) << ", " << cdf(upper, t) << ")");
 
         return Brent().solve(
-            [&](Real _k){ return cdf(_k, t) - q; },
+            [&](Real _k) -> Real { return cdf(_k, t) - q; },
             1e-10, 0.5*(lower+upper), lower, upper);
     }
 }

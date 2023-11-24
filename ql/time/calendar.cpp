@@ -27,6 +27,21 @@
 
 namespace QuantLib {
 
+    namespace {
+
+        // Requires: from < to.
+        Date::serial_type daysBetweenImpl(const Calendar& cal,
+                                          const Date& from, const Date& to,
+                                          bool includeFirst, bool includeLast) {
+            auto res = static_cast<Date::serial_type>(includeLast && cal.isBusinessDay(to));
+            for (Date d = includeFirst ? from : from + 1; d < to; ++d) {
+                res += static_cast<Date::serial_type>(cal.isBusinessDay(d));
+            }
+            return res;
+        }
+
+    }
+
     void Calendar::addHoliday(const Date& d) {
         QL_REQUIRE(impl_, "no calendar implementation provided");
 
@@ -59,6 +74,11 @@ namespace QuantLib {
         // Otherwise, add it.
         if (!impl_->isBusinessDay(_d))
             impl_->removedHolidays.insert(_d);
+    }
+
+    void Calendar::resetAddedAndRemovedHolidays() {
+        impl_->addedHolidays.clear();
+        impl_->removedHolidays.clear();
     }
 
     Date Calendar::adjust(const Date& d,
@@ -157,38 +177,9 @@ namespace QuantLib {
                                                     const Date& to,
                                                     bool includeFirst,
                                                     bool includeLast) const {
-        Date::serial_type wd = 0;
-        if (from != to) {
-            if (from < to) {
-                // the last one is treated separately to avoid
-                // incrementing Date::maxDate()
-                for (Date d = from; d < to; ++d) {
-                    if (isBusinessDay(d))
-                        ++wd;
-                }
-                if (isBusinessDay(to))
-                    ++wd;
-            } else if (from > to) {
-                for (Date d = to; d < from; ++d) {
-                    if (isBusinessDay(d))
-                        ++wd;
-                }
-                if (isBusinessDay(from))
-                    ++wd;
-            }
-
-            if (isBusinessDay(from) && !includeFirst)
-                --wd;
-            if (isBusinessDay(to) && !includeLast)
-                --wd;
-
-            if (from > to)
-                wd = -wd;
-        } else if (includeFirst && includeLast && isBusinessDay(from)) {
-            wd = 1;
-        }
-
-        return wd;
+        return (from < to) ? daysBetweenImpl(*this, from, to, includeFirst, includeLast) :
+               (from > to) ? -daysBetweenImpl(*this, to, from, includeLast, includeFirst) :
+               Date::serial_type(includeFirst && includeLast && isBusinessDay(from));
     }
 
 
@@ -277,26 +268,11 @@ namespace QuantLib {
         return EasterMonday[y-1901];
     }
 
-    std::vector<Date> Calendar::holidayList(const Calendar& calendar,
-        const Date& from, const Date& to, bool includeWeekEnds) {
-
-        QL_REQUIRE(to>from, "'from' date ("
-            << from << ") must be earlier than 'to' date ("
-            << to << ")");
-        std::vector<Date> result;
-        for (Date d = from; d <= to; ++d) {
-            if (calendar.isHoliday(d)
-                && (includeWeekEnds || !calendar.isWeekend(d.weekday())))
-                result.push_back(d);
-       }
-       return result;
-    }
-
     std::vector<Date> Calendar::holidayList(
         const Date& from, const Date& to, bool includeWeekEnds) const {
 
-        QL_REQUIRE(to>from, "'from' date ("
-            << from << ") must be earlier than 'to' date ("
+        QL_REQUIRE(to>=from, "'from' date ("
+            << from << ") must be equal to or earlier than 'to' date ("
             << to << ")");
         std::vector<Date> result;
         for (Date d = from; d <= to; ++d) {
@@ -309,8 +285,8 @@ namespace QuantLib {
     std::vector<Date> Calendar::businessDayList(
         const Date& from, const Date& to) const {
 
-        QL_REQUIRE(to>from, "'from' date ("
-            << from << ") must be earlier than 'to' date ("
+        QL_REQUIRE(to>=from, "'from' date ("
+            << from << ") must be equal to or earlier than 'to' date ("
             << to << ")");
         std::vector<Date> result;
         for (Date d = from; d <= to; ++d) {

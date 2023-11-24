@@ -17,19 +17,15 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "fdcev.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-
-#include <ql/math/functional.hpp>
 #include <ql/math/randomnumbers/rngtraits.hpp>
 #include <ql/math/integrals/gausslobattointegral.hpp>
 #include <ql/math/statistics/generalstatistics.hpp>
 #include <ql/pricingengines/vanilla/analyticcevengine.hpp>
 #include <ql/pricingengines/vanilla/fdcevvanillaengine.hpp>
-
 #include <ql/methods/finitedifferences/utilities/cevrndcalculator.hpp>
-
-#include <boost/make_shared.hpp>
+#include <ql/shared_ptr.hpp>
 
 using namespace QuantLib;
 using boost::unit_test_framework::test_suite;
@@ -49,7 +45,11 @@ namespace {
     };
 }
 
-void FdCevTest::testLocalMartingale() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(FdCevTest)
+
+BOOST_AUTO_TEST_CASE(testLocalMartingale) {
     BOOST_TEST_MESSAGE(
         "Testing local martingale property of CEV process with PDF...");
 
@@ -59,7 +59,7 @@ void FdCevTest::testLocalMartingale() {
     const Real alpha = 1.75;
     const Real betas[] = {-2.4, 0.23, 0.9, 1.1, 1.5};
 
-    for (double beta : betas) {
+    for (Real beta : betas) {
         const CEVRNDCalculator rndCalculator(f0, alpha, beta);
 
         const Real eps = 1e-10;
@@ -127,11 +127,9 @@ void FdCevTest::testLocalMartingale() {
     }
 }
 
-void FdCevTest::testFdmCevOp() {
+BOOST_AUTO_TEST_CASE(testFdmCevOp) {
     BOOST_TEST_MESSAGE(
             "Testing FDM constant elasticity of variance (CEV) operator...");
-
-    SavedSettings backup;
 
     const Date today = Date(22, February, 2018);
     const DayCounter dc = Actual365Fixed();
@@ -156,7 +154,7 @@ void FdCevTest::testFdmCevOp() {
         const Real alpha = 0.75;
 
         const Real betas[] = { -2.0, -0.5, 0.45, 0.6, 0.9, 1.45 };
-        for (double beta : betas) {
+        for (Real beta : betas) {
 
             VanillaOption option(payoff, exercise);
             option.setPricingEngine(ext::make_shared<AnalyticCEVEngine>(
@@ -207,13 +205,6 @@ void FdCevTest::testFdmCevOp() {
     }
 }
 
+BOOST_AUTO_TEST_SUITE_END()
 
-test_suite* FdCevTest::suite(SpeedLevel speed) {
-    auto* suite = BOOST_TEST_SUITE("Finite Difference CEV tests");
-
-
-    suite->add(QUANTLIB_TEST_CASE(&FdCevTest::testLocalMartingale));
-    suite->add(QUANTLIB_TEST_CASE(&FdCevTest::testFdmCevOp));
-
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

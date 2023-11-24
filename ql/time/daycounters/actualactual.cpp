@@ -159,6 +159,13 @@ namespace QuantLib {
         std::vector<Date> couponDates =
             getListOfPeriodDatesIncludingQuasiPayments(schedule_);
 
+        Date firstDate = *std::min_element(couponDates.begin(), couponDates.end());
+        Date lastDate = *std::max_element(couponDates.begin(), couponDates.end());
+
+        QL_REQUIRE(d1 >= firstDate && d2 <= lastDate, "Dates out of range of schedule: "
+                       << "date 1: " << d1 << ", date 2: " << d2 << ", first date: "
+                       << firstDate << ", last date: " << lastDate);
+
         Real yearFractionSum = 0.0;
         for (Size i = 0; i < couponDates.size() - 1; i++) {
             Date startReferencePeriod = couponDates[i];
@@ -289,7 +296,6 @@ namespace QuantLib {
              dib2 = (Date::isLeap(y2) ? 366.0 : 365.0);
 
         Time sum = y2 - y1 - 1;
-        // FLOATING_POINT_EXCEPTION
         sum += daysBetween(d1, Date(1,January,y1+1))/dib1;
         sum += daysBetween(Date(1,January,y2),d2)/dib2;
         return sum;

@@ -17,7 +17,8 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "fdsabr.hpp"
+#include "speedlevel.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/functional.hpp>
 #include <ql/instruments/vanillaoption.hpp>
@@ -32,11 +33,11 @@
 #include <ql/processes/blackscholesprocess.hpp>
 #include <ql/quotes/simplequote.hpp>
 #include <ql/termstructures/volatility/sabr.hpp>
-#include <boost/make_shared.hpp>
+#include <ql/shared_ptr.hpp>
 #include <utility>
 
 using namespace QuantLib;
-using boost::unit_test_framework::test_suite;
+using namespace boost::unit_test_framework;
 
 namespace {
     class SabrMonteCarloPricer {
@@ -101,13 +102,47 @@ namespace {
         const Real alpha_, beta_, nu_, rho_;
     };
 
+    /*
+     * Example and reference values are taken from
+     * B. Chen, C.W. Oosterlee, H. Weide,
+     * Efficient unbiased simulation scheme for the SABR stochastic volatility model.
+     * https://http://ta.twi.tudelft.nl/mf/users/oosterle/oosterlee/SABRMC.pdf
+     */
+
+    class OsterleeReferenceResults {
+      public:
+        explicit OsterleeReferenceResults(Size i) : i_(i) { }
+
+        Real operator()(Real t) const {
+            Size i;
+            if (close_enough(t, 1/16.))
+                i = 0;
+            else if (close_enough(t, 1/32.))
+                i = 1;
+            else
+                QL_FAIL("unmatched reference result lookup");
+
+            return data_[i_][i];
+        }
+
+      private:
+        const Size i_;
+        static Real data_[9][3];
+    };
+
+    Real OsterleeReferenceResults::data_[9][3] = {
+        { 0.0610, 0.0604 }, { 0.0468, 0.0463 }, { 0.0347, 0.0343 },
+        { 0.0632, 0.0625 }, { 0.0512, 0.0506 }, { 0.0406, 0.0400 },
+        { 0.0635, 0.0630 }, { 0.0523, 0.0520 }, { 0.0422, 0.0421 }
+    };
 }
 
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
 
-void FdSabrTest::testFdmSabrOp() {
+BOOST_AUTO_TEST_SUITE(FdSabrTest)
+
+BOOST_AUTO_TEST_CASE(testFdmSabrOp, *precondition(if_speed(Fast))) {
     BOOST_TEST_MESSAGE("Testing FDM SABR operator...");
-
-    SavedSettings backup;
 
     const Date today = Date(22, February, 2018);
     const DayCounter dc = Actual365Fixed();
@@ -144,7 +179,7 @@ void FdSabrTest::testFdmSabrOp() {
             Handle<Quote>(ext::make_shared<SimpleQuote>(f0)),
             rTS, rTS, Handle<BlackVolTermStructure>(flatVol(0.2, dc)));
 
-    for (double beta : betas) {
+    for (Real beta : betas) {
 
         const ext::shared_ptr<PricingEngine> pdeEngine =
             ext::make_shared<FdSabrVanillaEngine>(f0, alpha, beta, nu, rho, rTS, 100, 400, 100);
@@ -200,10 +235,8 @@ void FdSabrTest::testFdmSabrOp() {
     }
 }
 
-void FdSabrTest::testFdmSabrCevPricing() {
+BOOST_AUTO_TEST_CASE(testFdmSabrCevPricing) {
     BOOST_TEST_MESSAGE("Testing FDM CEV pricing with trivial SABR model...");
-
-    SavedSettings backup;
 
     const Date today = Date(3, January, 2019);
     const DayCounter dc = Actual365Fixed();
@@ -230,13 +263,13 @@ void FdSabrTest::testFdmSabrCevPricing() {
     const Real tol = 5e-5;
 
     for (auto optionType : optionTypes) {
-        for (double strike : strikes) {
+        for (Real strike : strikes) {
             const ext::shared_ptr<PlainVanillaPayoff> payoff =
                 ext::make_shared<PlainVanillaPayoff>(optionType, strike);
 
             VanillaOption option(payoff, exercise);
 
-            for (double beta : betas) {
+            for (Real beta : betas) {
                 option.setPricingEngine(ext::make_shared<FdSabrVanillaEngine>(
                     f0, alpha, beta, nu, rho, rTS, 100, 400, 3));
 
@@ -265,10 +298,8 @@ void FdSabrTest::testFdmSabrCevPricing() {
     }
 }
 
-void FdSabrTest::testFdmSabrVsVolApproximation() {
+BOOST_AUTO_TEST_CASE(testFdmSabrVsVolApproximation) {
     BOOST_TEST_MESSAGE("Testing FDM SABR vs approximations...");
-
-    SavedSettings backup;
 
     const Date today = Date(8, January, 2019);
     const DayCounter dc = Actual365Fixed();
@@ -297,7 +328,7 @@ void FdSabrTest::testFdmSabrVsVolApproximation() {
 
     const Real tol = 2.5e-3;
     for (auto optionType : optionTypes) {
-        for (double strike : strikes) {
+        for (Real strike : strikes) {
             VanillaOption option(ext::make_shared<PlainVanillaPayoff>(optionType, strike),
                                  ext::make_shared<EuropeanExercise>(maturityDate));
 
@@ -327,47 +358,8 @@ void FdSabrTest::testFdmSabrVsVolApproximation() {
     }
 }
 
-
-namespace {
-    /*
-     * Example and reference values are taken from
-     * B. Chen, C.W. Oosterlee, H. Weide,
-     * Efficient unbiased simulation scheme for the SABR stochastic volatility model.
-     * https://http://ta.twi.tudelft.nl/mf/users/oosterle/oosterlee/SABRMC.pdf
-     */
-
-    class OsterleeReferenceResults {
-      public:
-        explicit OsterleeReferenceResults(Size i) : i_(i) { }
-
-        Real operator()(Real t) const {
-            Size i;
-            if (close_enough(t, 1/16.))
-                i = 0;
-            else if (close_enough(t, 1/32.))
-                i = 1;
-            else
-                QL_FAIL("unmatched reference result lookup");
-
-            return data_[i_][i];
-        }
-
-      private:
-        const Size i_;
-        static Real data_[9][3];
-    };
-
-    Real OsterleeReferenceResults::data_[9][3] = {
-        { 0.0610, 0.0604 }, { 0.0468, 0.0463 }, { 0.0347, 0.0343 },
-        { 0.0632, 0.0625 }, { 0.0512, 0.0506 }, { 0.0406, 0.0400 },
-        { 0.0635, 0.0630 }, { 0.0523, 0.0520 }, { 0.0422, 0.0421 }
-    };
-}
-
-void FdSabrTest::testOosterleeTestCaseIV() {
+BOOST_AUTO_TEST_CASE(testOosterleeTestCaseIV) {
     BOOST_TEST_MESSAGE("Testing Chen, Oosterlee and Weide test case IV...");
-
-    SavedSettings backup;
 
     const Date today = Date(8, January, 2019);
     const DayCounter dc = Actual365Fixed();
@@ -431,7 +423,7 @@ void FdSabrTest::testOosterleeTestCaseIV() {
     }
 }
 
-void FdSabrTest::testBenchOpSabrCase() {
+BOOST_AUTO_TEST_CASE(testBenchOpSabrCase) {
     BOOST_TEST_MESSAGE("Testing SABR BenchOp problem...");
 
     /*
@@ -442,8 +434,6 @@ void FdSabrTest::testBenchOpSabrCase() {
      * Pricing–Stochastic and Local Volatility problems
      * https://ir.cwi.nl/pub/28249
      */
-
-    SavedSettings backup;
 
     const Date today = Date(8, January, 2019);
     const DayCounter dc = Actual365Fixed();
@@ -518,17 +508,6 @@ void FdSabrTest::testBenchOpSabrCase() {
     }
 }
 
-test_suite* FdSabrTest::suite(SpeedLevel speed) {
-    auto* suite = BOOST_TEST_SUITE("Finite Difference SABR tests");
+BOOST_AUTO_TEST_SUITE_END()
 
-    suite->add(QUANTLIB_TEST_CASE(&FdSabrTest::testFdmSabrCevPricing));
-    suite->add(QUANTLIB_TEST_CASE(&FdSabrTest::testFdmSabrVsVolApproximation));
-    suite->add(QUANTLIB_TEST_CASE(&FdSabrTest::testOosterleeTestCaseIV));
-    suite->add(QUANTLIB_TEST_CASE(&FdSabrTest::testBenchOpSabrCase));
-
-    if (speed <= Fast) {
-        suite->add(QUANTLIB_TEST_CASE(&FdSabrTest::testFdmSabrOp));
-    }
-
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

@@ -28,7 +28,7 @@
 #include <ql/instruments/vanillaswap.hpp>
 #include <ql/time/daycounter.hpp>
 #include <ql/time/schedule.hpp>
-#include <boost/optional.hpp>
+#include <ql/optional.hpp>
 
 namespace QuantLib {
 
@@ -43,7 +43,7 @@ namespace QuantLib {
         class results;
         class engine;
         NonstandardSwap(const VanillaSwap &fromVanilla);
-        NonstandardSwap(VanillaSwap::Type type,
+        NonstandardSwap(Swap::Type type,
                         std::vector<Real> fixedNominal,
                         const std::vector<Real>& floatingNominal,
                         Schedule fixedSchedule,
@@ -56,8 +56,8 @@ namespace QuantLib {
                         DayCounter floatingDayCount,
                         bool intermediateCapitalExchange = false,
                         bool finalCapitalExchange = false,
-                        boost::optional<BusinessDayConvention> paymentConvention = boost::none);
-        NonstandardSwap(VanillaSwap::Type type,
+                        ext::optional<BusinessDayConvention> paymentConvention = ext::nullopt);
+        NonstandardSwap(Swap::Type type,
                         std::vector<Real> fixedNominal,
                         std::vector<Real> floatingNominal,
                         Schedule fixedSchedule,
@@ -70,10 +70,10 @@ namespace QuantLib {
                         DayCounter floatingDayCount,
                         bool intermediateCapitalExchange = false,
                         bool finalCapitalExchange = false,
-                        boost::optional<BusinessDayConvention> paymentConvention = boost::none);
+                        ext::optional<BusinessDayConvention> paymentConvention = ext::nullopt);
         //! \name Inspectors
         //@{
-        VanillaSwap::Type type() const;
+        Swap::Type type() const;
         const std::vector<Real> &fixedNominal() const;
         const std::vector<Real> &floatingNominal() const;
 
@@ -105,7 +105,7 @@ namespace QuantLib {
       private:
         void init();
         void setupExpired() const override;
-        VanillaSwap::Type type_;
+        Swap::Type type_;
         std::vector<Real> fixedNominal_, floatingNominal_;
         Schedule fixedSchedule_;
         std::vector<Real> fixedRate_;
@@ -126,7 +126,7 @@ namespace QuantLib {
     class NonstandardSwap::arguments : public Swap::arguments {
       public:
         arguments() = default;
-        VanillaSwap::Type type = VanillaSwap::Receiver;
+        Swap::Type type = Swap::Receiver;
         std::vector<Real> fixedNominal, floatingNominal;
 
         std::vector<Date> fixedResetDates;
@@ -162,7 +162,7 @@ namespace QuantLib {
 
     // inline definitions
 
-    inline VanillaSwap::Type NonstandardSwap::type() const { return type_; }
+    inline Swap::Type NonstandardSwap::type() const { return type_; }
 
     inline const std::vector<Real> &NonstandardSwap::fixedNominal() const {
         return fixedNominal_;

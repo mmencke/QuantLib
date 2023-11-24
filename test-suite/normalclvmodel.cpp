@@ -20,8 +20,8 @@
 
 #include "normalclvmodel.hpp"
 #include "utilities.hpp"
-#include <ql/experimental/barrieroption/analyticdoublebarrierbinaryengine.hpp>
-#include <ql/experimental/barrieroption/doublebarrieroption.hpp>
+#include <ql/pricingengines/barrier/analyticdoublebarrierbinaryengine.hpp>
+#include <ql/instruments/doublebarrieroption.hpp>
 #include <ql/experimental/finitedifferences/fdornsteinuhlenbeckvanillaengine.hpp>
 #include <ql/experimental/models/normalclvmodel.hpp>
 #include <ql/experimental/volatility/sabrvoltermstructure.hpp>
@@ -55,8 +55,6 @@ void NormalCLVModelTest::testBSCumlativeDistributionFunction() {
     BOOST_TEST_MESSAGE("Testing Black-Scholes cumulative distribution function"
                        " with constant volatility...");
 
-    SavedSettings backup;
-
     const DayCounter dc = Actual365Fixed();
     const Date today = Date(22, June, 2016);
     const Date maturity = today + Period(6, Months);
@@ -81,7 +79,7 @@ void NormalCLVModelTest::testBSCumlativeDistributionFunction() {
     const BSMRNDCalculator rndCalculator(bsProcess);
 
 
-    const Real tol = 1e5*QL_EPSILON;
+    constexpr double tol = 1e5 * QL_EPSILON;
     const Time t = dc.yearFraction(today, maturity);
     for (Real x=10; x < 400; x+=10) {
         const Real calculated = m.cdf(maturity, x);
@@ -98,8 +96,6 @@ void NormalCLVModelTest::testBSCumlativeDistributionFunction() {
 
 void NormalCLVModelTest::testHestonCumlativeDistributionFunction() {
     BOOST_TEST_MESSAGE("Testing Heston cumulative distribution function...");
-
-    SavedSettings backup;
 
     const DayCounter dc = Actual365Fixed();
     const Date today = Date(22, June, 2016);
@@ -154,8 +150,6 @@ void NormalCLVModelTest::testHestonCumlativeDistributionFunction() {
 void NormalCLVModelTest::testIllustrative1DExample() {
     BOOST_TEST_MESSAGE(
         "Testing illustrative 1D example of normal CLV model...");
-
-    SavedSettings backup;
 
     // example taken from:
     // A. Grzelak, 2015, The CLV Framework -
@@ -287,8 +281,6 @@ void NormalCLVModelTest::testMonteCarloBSOptionPricing() {
 
     using namespace normal_clv_model_test;
 
-    SavedSettings backup;
-
     const DayCounter dc = Actual365Fixed();
     const Date today = Date(22, June, 2016);
     const Date maturity = today + Period(1, Years);
@@ -383,15 +375,13 @@ void NormalCLVModelTest::testMoustacheGraph() {
     BOOST_TEST_MESSAGE(
         "Testing double no-touch pricing with normal CLV model...");
 
-    SavedSettings backup;
-
     /*
      The comparison of Black-Scholes and normal CLV prices is derived
      from figure 8.8 in Iain J. Clark's book,
      Foreign Exchange Option Pricing: A Practitioner’s Guide
     */
 
-    const DayCounter dc = ActualActual();
+    const DayCounter dc = ActualActual(ActualActual::ISDA);
     const Date todaysDate(5, Aug, 2016);
     const Date maturityDate = todaysDate + Period(1, Years);
     const Time maturityTime = dc.yearFraction(todaysDate, maturityDate);

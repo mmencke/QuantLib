@@ -18,7 +18,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "jumpdiffusion.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/time/daycounters/actual360.hpp>
 #include <ql/instruments/europeanoption.hpp>
@@ -94,13 +94,14 @@ namespace {
 
 }
 
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
 
-void JumpDiffusionTest::testMerton76() {
+BOOST_AUTO_TEST_SUITE(JumpDiffusionTest)
+
+BOOST_AUTO_TEST_CASE(testMerton76) {
 
     BOOST_TEST_MESSAGE("Testing Merton 76 jump-diffusion model "
                        "for European options...");
-
-    SavedSettings backup;
 
     /* The data below are from
        "Option pricing formulas", E.G. Haug, McGraw-Hill 1998, pag 9
@@ -340,11 +341,9 @@ void JumpDiffusionTest::testMerton76() {
     }
 }
 
-void JumpDiffusionTest::testGreeks() {
+BOOST_AUTO_TEST_CASE(testGreeks) {
 
     BOOST_TEST_MESSAGE("Testing jump-diffusion option greeks...");
-
-    SavedSettings backup;
 
     std::map<std::string,Real> calculated, expected, tolerance;
     tolerance["delta"]  = 1.0e-4;
@@ -400,14 +399,14 @@ void JumpDiffusionTest::testGreeks() {
                                  new JumpDiffusionEngine(stochProcess,1e-08));
 
     for (auto& type : types) {
-        for (double strike : strikes) {
-            for (double& jj1 : jInt) {
+        for (Real strike : strikes) {
+            for (Real& jj1 : jInt) {
                 jumpIntensity->setValue(jj1);
-                for (double& jj2 : mLJ) {
+                for (Real& jj2 : mLJ) {
                     meanLogJump->setValue(jj2);
-                    for (double& jj3 : jV) {
+                    for (Real& jj3 : jV) {
                         jumpVol->setValue(jj3);
-                        for (double residualTime : residualTimes) {
+                        for (Real residualTime : residualTimes) {
                             Date exDate = today + timeToDays(residualTime);
                             ext::shared_ptr<Exercise> exercise(new EuropeanExercise(exDate));
                             for (Size kk = 0; kk < 1; kk++) {
@@ -422,10 +421,10 @@ void JumpDiffusionTest::testGreeks() {
                                 EuropeanOption option(payoff, exercise);
                                 option.setPricingEngine(engine);
 
-                                for (double u : underlyings) {
-                                    for (double q : qRates) {
-                                        for (double r : rRates) {
-                                            for (double v : vols) {
+                                for (Real u : underlyings) {
+                                    for (Real q : qRates) {
+                                        for (Real r : rRates) {
+                                            for (Real v : vols) {
                                                 spot->setValue(u);
                                                 qRate->setValue(q);
                                                 rRate->setValue(r);
@@ -523,10 +522,6 @@ void JumpDiffusionTest::testGreeks() {
     } // type loop
 }
 
+BOOST_AUTO_TEST_SUITE_END()
 
-test_suite* JumpDiffusionTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Jump-diffusion tests");
-    suite->add(QUANTLIB_TEST_CASE(&JumpDiffusionTest::testMerton76));
-    suite->add(QUANTLIB_TEST_CASE(&JumpDiffusionTest::testGreeks));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

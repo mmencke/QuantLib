@@ -18,7 +18,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "extendedtrees.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/time/daycounters/actual360.hpp>
 #include <ql/instruments/europeanoption.hpp>
@@ -172,7 +172,7 @@ namespace {
         ext::shared_ptr<YieldTermStructure> rTS = flatRate(today,rRate,dc);
 
         for (auto& type : types) {
-            for (double strike : strikes) {
+            for (Real strike : strikes) {
                 for (int length : lengths) {
                     Date exDate = today + length * 360;
                     ext::shared_ptr<Exercise> exercise(new EuropeanExercise(exDate));
@@ -184,10 +184,10 @@ namespace {
                     ext::shared_ptr<VanillaOption> option =
                         makeOption(payoff, exercise, spot, qTS, rTS, volTS, engine, binomialSteps);
 
-                    for (double u : underlyings) {
-                        for (double m : qRates) {
-                            for (double n : rRates) {
-                                for (double v : vols) {
+                    for (Real u : underlyings) {
+                        for (Real m : qRates) {
+                            for (Real n : rRates) {
+                                for (Real v : vols) {
                                     Rate q = m, r = n;
                                     spot->setValue(u);
                                     qRate->setValue(q);
@@ -197,7 +197,6 @@ namespace {
                                     expected.clear();
                                     calculated.clear();
 
-                                    // FLOATING_POINT_EXCEPTION
                                     expected["value"] = refOption->NPV();
                                     calculated["value"] = option->NPV();
 
@@ -231,15 +230,16 @@ namespace {
 
 }
 
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
 
-void ExtendedTreesTest::testJRBinomialEngines() {
+BOOST_AUTO_TEST_SUITE(ExtendedTreesExperimentalTest)
+
+BOOST_AUTO_TEST_CASE(testJRBinomialEngines) {
 
     BOOST_TEST_MESSAGE("Testing time-dependent JR binomial European engines "
                        "against analytic results...");
 
     using namespace extended_trees_test;
-
-    SavedSettings backup;
 
     EngineType engine = JR;
     Size steps = 251;
@@ -251,14 +251,12 @@ void ExtendedTreesTest::testJRBinomialEngines() {
     testEngineConsistency(engine, steps, relativeTol);
 }
 
-void ExtendedTreesTest::testCRRBinomialEngines() {
+BOOST_AUTO_TEST_CASE(testCRRBinomialEngines) {
 
     BOOST_TEST_MESSAGE("Testing time-dependent CRR binomial European engines "
                        "against analytic results...");
 
     using namespace extended_trees_test;
-
-    SavedSettings backup;
 
     EngineType engine = CRR;
     Size steps = 501;
@@ -270,14 +268,12 @@ void ExtendedTreesTest::testCRRBinomialEngines() {
     testEngineConsistency(engine, steps, relativeTol);
 }
 
-void ExtendedTreesTest::testEQPBinomialEngines() {
+BOOST_AUTO_TEST_CASE(testEQPBinomialEngines) {
 
     BOOST_TEST_MESSAGE("Testing time-dependent EQP binomial European engines "
                        "against analytic results...");
 
     using namespace extended_trees_test;
-
-    SavedSettings backup;
 
     EngineType engine = EQP;
     Size steps = 501;
@@ -289,14 +285,12 @@ void ExtendedTreesTest::testEQPBinomialEngines() {
     testEngineConsistency(engine, steps, relativeTol);
 }
 
-void ExtendedTreesTest::testTGEOBinomialEngines() {
+BOOST_AUTO_TEST_CASE(testTGEOBinomialEngines) {
 
     BOOST_TEST_MESSAGE("Testing time-dependent TGEO binomial European engines "
                        "against analytic results...");
 
     using namespace extended_trees_test;
-
-    SavedSettings backup;
 
     EngineType engine = TGEO;
     Size steps = 251;
@@ -308,14 +302,12 @@ void ExtendedTreesTest::testTGEOBinomialEngines() {
     testEngineConsistency(engine, steps, relativeTol);
 }
 
-void ExtendedTreesTest::testTIANBinomialEngines() {
+BOOST_AUTO_TEST_CASE(testTIANBinomialEngines) {
 
     BOOST_TEST_MESSAGE("Testing time-dependent TIAN binomial European engines "
                        "against analytic results...");
 
     using namespace extended_trees_test;
-
-    SavedSettings backup;
 
     EngineType engine = TIAN;
     Size steps = 251;
@@ -327,14 +319,12 @@ void ExtendedTreesTest::testTIANBinomialEngines() {
     testEngineConsistency(engine, steps, relativeTol);
 }
 
-void ExtendedTreesTest::testLRBinomialEngines() {
+BOOST_AUTO_TEST_CASE(testLRBinomialEngines) {
 
     BOOST_TEST_MESSAGE("Testing time-dependent LR binomial European engines "
                        "against analytic results...");
 
     using namespace extended_trees_test;
-
-    SavedSettings backup;
 
     EngineType engine = LR;
     Size steps = 251;
@@ -346,14 +336,12 @@ void ExtendedTreesTest::testLRBinomialEngines() {
     testEngineConsistency(engine, steps, relativeTol);
 }
 
-void ExtendedTreesTest::testJOSHIBinomialEngines() {
+BOOST_AUTO_TEST_CASE(testJOSHIBinomialEngines) {
 
     BOOST_TEST_MESSAGE("Testing time-dependent Joshi binomial European engines "
                        "against analytic results...");
 
     using namespace extended_trees_test;
-
-    SavedSettings backup;
 
     EngineType engine = JOSHI;
     Size steps = 251;
@@ -365,17 +353,6 @@ void ExtendedTreesTest::testJOSHIBinomialEngines() {
     testEngineConsistency(engine, steps, relativeTol);
 }
 
-test_suite* ExtendedTreesTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("European option extended trees tests");
+BOOST_AUTO_TEST_SUITE_END()
 
-    suite->add(QUANTLIB_TEST_CASE(&ExtendedTreesTest::testJRBinomialEngines));
-    suite->add(QUANTLIB_TEST_CASE(&ExtendedTreesTest::testCRRBinomialEngines));
-    suite->add(QUANTLIB_TEST_CASE(&ExtendedTreesTest::testEQPBinomialEngines));
-    suite->add(QUANTLIB_TEST_CASE(&ExtendedTreesTest::testTGEOBinomialEngines));
-    suite->add(QUANTLIB_TEST_CASE(&ExtendedTreesTest::testTIANBinomialEngines));
-    suite->add(QUANTLIB_TEST_CASE(&ExtendedTreesTest::testLRBinomialEngines));
-    suite->add(QUANTLIB_TEST_CASE(
-                               &ExtendedTreesTest::testJOSHIBinomialEngines));
-
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

@@ -20,7 +20,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "cms.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/instruments/swap.hpp>
 #include <ql/pricingengines/swap/discountingswapengine.hpp>
@@ -32,8 +32,8 @@
 #include <ql/cashflows/lineartsrpricer.hpp>
 #include <ql/quotes/simplequote.hpp>
 #include <ql/termstructures/volatility/swaption/swaptionvolmatrix.hpp>
-#include <ql/termstructures/volatility/swaption/swaptionvolcube2.hpp>
-#include <ql/termstructures/volatility/swaption/swaptionvolcube1.hpp>
+#include <ql/termstructures/volatility/swaption/interpolatedswaptionvolatilitycube.hpp>
+#include <ql/termstructures/volatility/swaption/sabrswaptionvolatilitycube.hpp>
 #include <ql/time/calendars/target.hpp>
 #include <ql/time/daycounters/thirty360.hpp>
 #include <ql/time/schedule.hpp>
@@ -58,9 +58,6 @@ namespace cms_test {
         std::vector<GFunctionFactory::YieldCurveModel> yieldCurveModels;
         std::vector<ext::shared_ptr<CmsCouponPricer> > numericalPricers;
         std::vector<ext::shared_ptr<CmsCouponPricer> > analyticPricers;
-
-        // cleanup
-        SavedSettings backup;
 
         // setup
         CommonVars() {
@@ -176,7 +173,7 @@ namespace cms_test {
             bool vegaWeightedSmileFit = false;
 
             SabrVolCube2 = Handle<SwaptionVolatilityStructure>(
-                ext::make_shared<SwaptionVolCube2>(atmVol,
+                ext::make_shared<InterpolatedSwaptionVolatilityCube>(atmVol,
                                      optionTenors,
                                      swapTenors,
                                      strikeSpreads,
@@ -205,8 +202,7 @@ namespace cms_test {
             bool isAtmCalibrated = false;
 
             SabrVolCube1 = Handle<SwaptionVolatilityStructure>(
-                ext::shared_ptr<SwaptionVolCube1>(new
-                    SwaptionVolCube1(atmVol,
+                ext::make_shared<SabrSwaptionVolatilityCube>(atmVol,
                                      optionTenors,
                                      swapTenors,
                                      strikeSpreads,
@@ -216,7 +212,7 @@ namespace cms_test {
                                      vegaWeightedSmileFit,
                                      guess,
                                      isParameterFixed,
-                                     isAtmCalibrated)));
+                                     isAtmCalibrated));
             SabrVolCube1->enableExtrapolation();
 
             yieldCurveModels = {GFunctionFactory::Standard,
@@ -247,10 +243,13 @@ namespace cms_test {
 
 }
 
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
 
-void CmsTest::testFairRate()  {
+BOOST_AUTO_TEST_SUITE(CmsTest)
 
-    BOOST_TEST_MESSAGE("Testing Hagan-pricer flat-vol equivalence for coupons...");
+BOOST_AUTO_TEST_CASE(testFairRate)  {
+
+    BOOST_TEST_MESSAGE("Testing Hagan-pricer flat-vol equivalence for coupons (lognormal case)...");
 
     using namespace cms_test;
 
@@ -314,9 +313,9 @@ void CmsTest::testFairRate()  {
     }
 }
 
-void CmsTest::testCmsSwap() {
+BOOST_AUTO_TEST_CASE(testCmsSwap) {
 
-    BOOST_TEST_MESSAGE("Testing Hagan-pricer flat-vol equivalence for swaps...");
+    BOOST_TEST_MESSAGE("Testing Hagan-pricer flat-vol equivalence for swaps (lognormal case)...");
 
     using namespace cms_test;
 
@@ -377,9 +376,9 @@ void CmsTest::testCmsSwap() {
 
 }
 
-void CmsTest::testParity() {
+BOOST_AUTO_TEST_CASE(testParity) {
 
-    BOOST_TEST_MESSAGE("Testing put-call parity for capped-floored CMS coupons...");
+    BOOST_TEST_MESSAGE("Testing put-call parity for capped-floored CMS coupons (lognormal case)...");
 
     using namespace cms_test;
 
@@ -469,10 +468,6 @@ void CmsTest::testParity() {
     }
 }
 
-test_suite* CmsTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Cms tests");
-    suite->add(QUANTLIB_TEST_CASE(&CmsTest::testFairRate));
-    suite->add(QUANTLIB_TEST_CASE(&CmsTest::testCmsSwap));
-    suite->add(QUANTLIB_TEST_CASE(&CmsTest::testParity));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()

@@ -62,31 +62,24 @@ namespace QuantLib {
 
 
     Rate InflationCoupon::rate() const {
+        calculate();
+        return rate_;
+    }
+
+    void InflationCoupon::performCalculations() const {
         QL_REQUIRE(pricer_, "pricer not set");
         // we know it is the correct type because checkPricerImpl checks on setting
         // in general pricer_ will be a derived class, as will *this on calling
         pricer_->initialize(*this);
-        return pricer_->swapletRate();
+        rate_ = pricer_->swapletRate();
     }
 
 
     Real InflationCoupon::accruedAmount(const Date& d) const {
         if (d <= accrualStartDate_ || d > paymentDate_) {
             return 0.0;
-        }else if (tradingExCoupon(d)) {
-            return -nominal() * rate() *
-            dayCounter().yearFraction(d,
-                                      std::max(d, accrualEndDate_),
-                                      refPeriodStart_,
-                                      refPeriodEnd_);
-        }
-        else {
-            return nominal() * rate() *
-                dayCounter().yearFraction(accrualStartDate_,
-                    std::min(d, accrualEndDate_),
-                    refPeriodStart_,
-                    refPeriodEnd_);
-
+        } else {
+            return nominal() * rate() * accruedPeriod(d);
         }
     }
 

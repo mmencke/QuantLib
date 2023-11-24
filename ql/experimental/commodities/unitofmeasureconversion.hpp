@@ -18,8 +18,8 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-/*! \file energycommodity.hpp
-    \brief Energy commodity
+/*! \file unitofmeasureconversion.hpp
+    \brief Unit of measure conversion
 */
 
 #ifndef quantlib_unit_of_measure_conversion_hpp
@@ -40,7 +40,7 @@ namespace QuantLib {
         };
         //! \name Constructors
         //@{
-        UnitOfMeasureConversion();
+        UnitOfMeasureConversion() = default;
         /*! the conversionFactor \f$ r \f$ is given with the
             convention that a unit of the source is worth \f$ r \f$
             units of the target.
@@ -104,8 +104,6 @@ namespace QuantLib {
     };
 
     // inline definitions
-
-    inline UnitOfMeasureConversion::UnitOfMeasureConversion() = default;
 
     inline const CommodityType& UnitOfMeasureConversion::commodityType() const {
         return data_->commodityType;

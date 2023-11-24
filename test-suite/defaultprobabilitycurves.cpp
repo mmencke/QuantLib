@@ -18,7 +18,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "defaultprobabilitycurves.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/instruments/creditdefaultswap.hpp>
 #include <ql/math/interpolations/backwardflatinterpolation.hpp>
@@ -48,7 +48,11 @@ using std::map;
 using std::vector;
 using std::string;
 
-void DefaultProbabilityCurveTest::testDefaultProbability() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(DefaultProbabilityCurveTest)
+
+BOOST_AUTO_TEST_CASE(testDefaultProbability) {
 
     BOOST_TEST_MESSAGE("Testing default-probability structure...");
 
@@ -111,8 +115,7 @@ void DefaultProbabilityCurveTest::testDefaultProbability() {
     }
 }
 
-
-void DefaultProbabilityCurveTest::testFlatHazardRate() {
+BOOST_AUTO_TEST_CASE(testFlatHazardRate) {
 
     BOOST_TEST_MESSAGE("Testing flat hazard rate...");
 
@@ -163,7 +166,7 @@ namespace {
         Frequency frequency = Quarterly;
         BusinessDayConvention convention = Following;
         DateGeneration::Rule rule = DateGeneration::TwentiethIMM;
-        DayCounter dayCounter = Thirty360();
+        DayCounter dayCounter = Thirty360(Thirty360::BondBasis);
         Real recoveryRate = 0.4;
 
         RelinkableHandle<YieldTermStructure> discountCurve;
@@ -185,40 +188,42 @@ namespace {
         piecewiseCurve.linkTo(
             ext::shared_ptr<DefaultProbabilityTermStructure>(
                 new PiecewiseDefaultCurve<T,I>(today, helpers,
-                                               Thirty360())));
+                                               Thirty360(Thirty360::BondBasis))));
 
         Real notional = 1.0;
         double tolerance = 1.0e-6;
 
-        // ensure apple-to-apple comparison
-        SavedSettings backup;
-        Settings::instance().includeTodaysCashFlows() = true;
+        {
+            SavedSettings restore;
+            // ensure apple-to-apple comparison
+            Settings::instance().includeTodaysCashFlows() = true;
 
-        for (Size i=0; i<n.size(); i++) {
-            Date protectionStart = today + settlementDays;
-            Date startDate = calendar.adjust(protectionStart, convention);
-            Date endDate = today + n[i]*Years;
+            for (Size i=0; i<n.size(); i++) {
+                Date protectionStart = today + settlementDays;
+                Date startDate = calendar.adjust(protectionStart, convention);
+                Date endDate = today + n[i]*Years;
 
-            Schedule schedule(startDate, endDate, Period(frequency), calendar,
-                              convention, Unadjusted, rule, false);
+                Schedule schedule(startDate, endDate, Period(frequency), calendar,
+                                  convention, Unadjusted, rule, false);
 
-            CreditDefaultSwap cds(Protection::Buyer, notional, quote[i],
-                                  schedule, convention, dayCounter,
-                                  true, true, protectionStart);
-            cds.setPricingEngine(ext::shared_ptr<PricingEngine>(
+                CreditDefaultSwap cds(Protection::Buyer, notional, quote[i],
+                                      schedule, convention, dayCounter,
+                                      true, true, protectionStart);
+                cds.setPricingEngine(ext::shared_ptr<PricingEngine>(
                            new MidPointCdsEngine(piecewiseCurve, recoveryRate,
                                                  discountCurve)));
 
-            // test
-            Rate inputRate = quote[i];
-            Rate computedRate = cds.fairSpread();
-            if (std::fabs(inputRate - computedRate) > tolerance)
-                BOOST_ERROR(
-                    "\nFailed to reproduce fair spread for " << n[i] <<
-                    "Y credit-default swaps\n"
-                    << std::setprecision(10)
-                    << "    computed rate: " << io::rate(computedRate) << "\n"
-                    << "    input rate:    " << io::rate(inputRate));
+                // test
+                Rate inputRate = quote[i];
+                Rate computedRate = cds.fairSpread();
+                if (std::fabs(inputRate - computedRate) > tolerance)
+                    BOOST_ERROR(
+                                "\nFailed to reproduce fair spread for " << n[i] <<
+                                "Y credit-default swaps\n"
+                                << std::setprecision(10)
+                                << "    computed rate: " << io::rate(computedRate) << "\n"
+                                << "    input rate:    " << io::rate(inputRate));
+            }
         }
     }
 
@@ -265,98 +270,81 @@ namespace {
         piecewiseCurve.linkTo(
             ext::shared_ptr<DefaultProbabilityTermStructure>(
                 new PiecewiseDefaultCurve<T,I>(today, helpers,
-                                               Thirty360())));
+                                               Thirty360(Thirty360::BondBasis))));
 
         Real notional = 1.0;
         double tolerance = 1.0e-6;
 
-        SavedSettings backup;
-        // ensure apple-to-apple comparison
-        Settings::instance().includeTodaysCashFlows() = true;
+        {
+            SavedSettings backup;
+            // ensure apple-to-apple comparison
+            Settings::instance().includeTodaysCashFlows() = true;
 
-        for (Size i=0; i<n.size(); i++) {
-            Date protectionStart = today + settlementDays;
-            Date startDate = protectionStart;
-            Date endDate = cdsMaturity(today, n[i] * Years, rule);
-            Date upfrontDate = calendar.advance(today,
-                                         upfrontSettlementDays,
-                                         Days,
-                                         convention);
+            for (Size i=0; i<n.size(); i++) {
+                Date protectionStart = today + settlementDays;
+                Date startDate = protectionStart;
+                Date endDate = cdsMaturity(today, n[i] * Years, rule);
+                Date upfrontDate = calendar.advance(today,
+                                                    upfrontSettlementDays,
+                                                    Days,
+                                                    convention);
 
-            Schedule schedule(startDate, endDate, Period(frequency), calendar,
-                              convention, Unadjusted, rule, false);
+                Schedule schedule(startDate, endDate, Period(frequency), calendar,
+                                  convention, Unadjusted, rule, false);
 
-            CreditDefaultSwap cds(Protection::Buyer, notional,
-                                  quote[i], fixedRate,
-                                  schedule, convention, dayCounter,
-                                  true, true, protectionStart,
-                                  upfrontDate,
-                                  ext::shared_ptr<Claim>(),
-                                  Actual360(true),
-                                  true, today);
-            cds.setPricingEngine(ext::shared_ptr<PricingEngine>(
+                CreditDefaultSwap cds(Protection::Buyer, notional,
+                                      quote[i], fixedRate,
+                                      schedule, convention, dayCounter,
+                                      true, true, protectionStart,
+                                      upfrontDate,
+                                      ext::shared_ptr<Claim>(),
+                                      Actual360(true),
+                                      true, today);
+                cds.setPricingEngine(ext::shared_ptr<PricingEngine>(
                            new MidPointCdsEngine(piecewiseCurve, recoveryRate,
                                                  discountCurve, true)));
 
-            // test
-            Rate inputUpfront = quote[i];
-            Rate computedUpfront = cds.fairUpfront();
-            if (std::fabs(inputUpfront - computedUpfront) > tolerance)
-                BOOST_ERROR(
-                    "\nFailed to reproduce fair upfront for " << n[i] <<
-                    "Y credit-default swaps\n"
-                    << std::setprecision(10)
-                    << "    computed: " << io::rate(computedUpfront) << "\n"
-                    << "    expected: " << io::rate(inputUpfront));
+                // test
+                Rate inputUpfront = quote[i];
+                Rate computedUpfront = cds.fairUpfront();
+                if (std::fabs(inputUpfront - computedUpfront) > tolerance)
+                    BOOST_ERROR(
+                                "\nFailed to reproduce fair upfront for " << n[i] <<
+                                "Y credit-default swaps\n"
+                                << std::setprecision(10)
+                                << "    computed: " << io::rate(computedUpfront) << "\n"
+                                << "    expected: " << io::rate(inputUpfront));
+            }
         }
     }
 
-    // Used to check that the exception message contains the expected message string, expMsg.
-    struct ExpErrorPred {
-
-        explicit ExpErrorPred(string msg) : expMsg(std::move(msg)) {}
-
-        bool operator()(const Error& ex) const {
-            string errMsg(ex.what());
-            if (errMsg.find(expMsg) == string::npos) {
-                BOOST_TEST_MESSAGE("Error expected to contain: '" << expMsg << "'.");
-                BOOST_TEST_MESSAGE("Actual error is: '" << errMsg << "'.");
-                return false;
-            } else {
-                return true;
-            }
-        }
-
-        string expMsg;
-    };
-
 }
 
-void DefaultProbabilityCurveTest::testFlatHazardConsistency() {
+BOOST_AUTO_TEST_CASE(testFlatHazardConsistency) {
     BOOST_TEST_MESSAGE("Testing piecewise-flat hazard-rate consistency...");
     testBootstrapFromSpread<HazardRate,BackwardFlat>();
     testBootstrapFromUpfront<HazardRate,BackwardFlat>();
 }
 
-void DefaultProbabilityCurveTest::testFlatDensityConsistency() {
+BOOST_AUTO_TEST_CASE(testFlatDensityConsistency) {
     BOOST_TEST_MESSAGE("Testing piecewise-flat default-density consistency...");
     testBootstrapFromSpread<DefaultDensity,BackwardFlat>();
     testBootstrapFromUpfront<DefaultDensity,BackwardFlat>();
 }
 
-void DefaultProbabilityCurveTest::testLinearDensityConsistency() {
+BOOST_AUTO_TEST_CASE(testLinearDensityConsistency) {
     BOOST_TEST_MESSAGE("Testing piecewise-linear default-density consistency...");
     testBootstrapFromSpread<DefaultDensity,Linear>();
     testBootstrapFromUpfront<DefaultDensity,Linear>();
 }
 
-void DefaultProbabilityCurveTest::testLogLinearSurvivalConsistency() {
+BOOST_AUTO_TEST_CASE(testLogLinearSurvivalConsistency) {
     BOOST_TEST_MESSAGE("Testing log-linear survival-probability consistency...");
     testBootstrapFromSpread<SurvivalProbability,LogLinear>();
     testBootstrapFromUpfront<SurvivalProbability,LogLinear>();
 }
 
-void DefaultProbabilityCurveTest::testSingleInstrumentBootstrap() {
+BOOST_AUTO_TEST_CASE(testSingleInstrumentBootstrap) {
     BOOST_TEST_MESSAGE("Testing single-instrument curve bootstrap...");
 
     Calendar calendar = TARGET();
@@ -371,7 +359,7 @@ void DefaultProbabilityCurveTest::testSingleInstrumentBootstrap() {
     Frequency frequency = Quarterly;
     BusinessDayConvention convention = Following;
     DateGeneration::Rule rule = DateGeneration::TwentiethIMM;
-    DayCounter dayCounter = Thirty360();
+    DayCounter dayCounter = Thirty360(Thirty360::BondBasis);
     Real recoveryRate = 0.4;
 
     RelinkableHandle<YieldTermStructure> discountCurve;
@@ -392,17 +380,20 @@ void DefaultProbabilityCurveTest::testSingleInstrumentBootstrap() {
     defaultCurve.recalculate();
 }
 
-void DefaultProbabilityCurveTest::testUpfrontBootstrap() {
+BOOST_AUTO_TEST_CASE(testUpfrontBootstrap) {
     BOOST_TEST_MESSAGE("Testing bootstrap on upfront quotes...");
 
-    SavedSettings backup;
-    // not taken into account, this would prevent the upfront from being used
+    // Setting this to false would prevent the upfront from being used.
+    // By checking that the bootstrap works, we indirectly check that
+    // UpfrontCdsHelper::impliedQuote() overrides it.
     Settings::instance().includeTodaysCashFlows() = false;
 
     testBootstrapFromUpfront<HazardRate,BackwardFlat>();
 
-    // also ensure that we didn't override the flag permanently
-    boost::optional<bool> flag = Settings::instance().includeTodaysCashFlows();
+    // This checks that UpfrontCdsHelper::impliedQuote() didn't
+    // override the flag permanently; after the bootstrap, it should
+    // go back to its previous value.
+    ext::optional<bool> flag = Settings::instance().includeTodaysCashFlows();
     if (flag != false)
         BOOST_ERROR("Cash-flow settings improperly modified");
 }
@@ -412,11 +403,10 @@ void DefaultProbabilityCurveTest::testUpfrontBootstrap() {
    retries, the default curve building fails. Allowing retries, it expands the min survival probability bounds but 
    still fails. We set dontThrow to true in IterativeBootstrap to use a fall back curve.
 */
-void DefaultProbabilityCurveTest::testIterativeBootstrapRetries() {
+
+BOOST_AUTO_TEST_CASE(testIterativeBootstrapRetries) {
 
     BOOST_TEST_MESSAGE("Testing iterative bootstrap with retries...");
-
-    SavedSettings backup;
 
     Date asof(1, Apr, 2020);
     Settings::instance().evaluationDate() = asof;
@@ -507,10 +497,10 @@ void DefaultProbabilityCurveTest::testIterativeBootstrapRetries() {
     // Create the CDS spread helpers.
     vector<ext::shared_ptr<DefaultProbabilityHelper> > instruments;
     for (map<Period, Rate>::const_iterator it = cdsSpreads.begin(); it != cdsSpreads.end(); ++it) {
-        instruments.push_back(ext::shared_ptr<SpreadCdsHelper>(
-            new SpreadCdsHelper(it->second, it->first, settlementDays, calendar,
+        instruments.push_back(ext::make_shared<SpreadCdsHelper>(
+            it->second, it->first, settlementDays, calendar,
                                 frequency, paymentConvention, rule, dayCounter, recoveryRate, usdYts, true, true, Date(),
-                                lastPeriodDayCounter)));
+                                lastPeriodDayCounter));
     }
 
     // Create the default curve with the default IterativeBootstrap.
@@ -520,7 +510,7 @@ void DefaultProbabilityCurveTest::testIterativeBootstrapRetries() {
     // Check that the default curve throws by requesting a default probability.
     Date testDate(21, Dec, 2020);
     BOOST_CHECK_EXCEPTION(dpts->survivalProbability(testDate), Error,
-        ExpErrorPred("1st iteration: failed at 1st alive instrument"));
+        ExpectedErrorMessage("1st iteration: failed at 1st alive instrument"));
 
     // Create the default curve with an IterativeBootstrap allowing for 4 retries.
     // Use a maxFactor value of 1.0 so that we still use the previous survival probability at each pillar. In other
@@ -532,7 +522,7 @@ void DefaultProbabilityCurveTest::testIterativeBootstrapRetries() {
     // Check that the default curve still throws. It throws at the third pillar because the survival probability is 
     // too low at the second pillar.
     BOOST_CHECK_EXCEPTION(dpts->survivalProbability(testDate), Error,
-        ExpErrorPred("1st iteration: failed at 3rd alive instrument"));
+        ExpectedErrorMessage("1st iteration: failed at 3rd alive instrument"));
 
     // Create the default curve with an IterativeBootstrap that allows for 4 retries and does not throw.
     IterativeBootstrap<SPCurve> ibNoThrow(Null<Real>(), Null<Real>(), Null<Real>(), 5, 1.0, 10.0, true, 2);
@@ -540,26 +530,6 @@ void DefaultProbabilityCurveTest::testIterativeBootstrapRetries() {
     BOOST_CHECK_NO_THROW(dpts->survivalProbability(testDate));
 }
 
+BOOST_AUTO_TEST_SUITE_END()
 
-test_suite* DefaultProbabilityCurveTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Default-probability curve tests");
-    suite->add(QUANTLIB_TEST_CASE(
-                       &DefaultProbabilityCurveTest::testDefaultProbability));
-    suite->add(QUANTLIB_TEST_CASE(
-                           &DefaultProbabilityCurveTest::testFlatHazardRate));
-    suite->add(QUANTLIB_TEST_CASE(
-                    &DefaultProbabilityCurveTest::testFlatHazardConsistency));
-    suite->add(QUANTLIB_TEST_CASE(
-                   &DefaultProbabilityCurveTest::testFlatDensityConsistency));
-    suite->add(QUANTLIB_TEST_CASE(
-                 &DefaultProbabilityCurveTest::testLinearDensityConsistency));
-    suite->add(QUANTLIB_TEST_CASE(
-             &DefaultProbabilityCurveTest::testLogLinearSurvivalConsistency));
-    suite->add(QUANTLIB_TEST_CASE(
-                &DefaultProbabilityCurveTest::testSingleInstrumentBootstrap));
-    suite->add(QUANTLIB_TEST_CASE(
-                         &DefaultProbabilityCurveTest::testUpfrontBootstrap));
-    suite->add(QUANTLIB_TEST_CASE(
-                &DefaultProbabilityCurveTest::testIterativeBootstrapRetries));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

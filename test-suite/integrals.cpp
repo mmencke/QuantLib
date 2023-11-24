@@ -18,9 +18,8 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "integrals.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-#include <ql/math/functional.hpp>
 #include <ql/math/integrals/exponentialintegrals.hpp>
 #include <ql/math/integrals/filonintegral.hpp>
 #include <ql/math/integrals/segmentintegral.hpp>
@@ -29,6 +28,8 @@
 #include <ql/math/integrals/kronrodintegral.hpp>
 #include <ql/math/integrals/gausslobattointegral.hpp>
 #include <ql/math/integrals/discreteintegrals.hpp>
+#include <ql/math/integrals/tanhsinhintegral.hpp>
+#include <ql/math/integrals/gaussianquadratures.hpp>
 #include <ql/math/interpolations/bilinearinterpolation.hpp>
 #include <ql/math/distributions/normaldistribution.hpp>
 #include <ql/termstructures/volatility/abcd.hpp>
@@ -37,7 +38,7 @@
 #include <ql/experimental/math/piecewiseintegral.hpp>
 
 using namespace QuantLib;
-using boost::unit_test_framework::test_suite;
+using namespace boost::unit_test;
 
 namespace integrals_test {
 
@@ -58,18 +59,16 @@ namespace integrals_test {
 
     template <class T>
     void testSeveral(const T& I) {
-        testSingle(I, "f(x) = 0",
-                   constant<Real,Real>(0.0), 0.0, 1.0, 0.0);
-        testSingle(I, "f(x) = 1",
-                   constant<Real,Real>(1.0), 0.0, 1.0, 1.0);
-        testSingle(I, "f(x) = x",
-                   identity<Real>(),           0.0, 1.0, 0.5);
+        testSingle(I, "f(x) = 0", [](Real x) -> Real { return 0.0; }, 0.0, 1.0, 0.0);
+        testSingle(I, "f(x) = 1", [](Real x) -> Real { return 1.0; }, 0.0, 1.0, 1.0);
+        testSingle(I, "f(x) = x", [](Real x) -> Real { return x; }, 0.0, 1.0, 0.5);
         testSingle(I, "f(x) = x^2",
-                   square<Real>(),             0.0, 1.0, 1.0/3.0);
+                   [](Real x) -> Real { return x * x; }, 0.0, 1.0, 1.0/3.0);
         testSingle(I, "f(x) = sin(x)",
-                   static_cast<Real(*)(Real)>(std::sin), 0.0, M_PI, 2.0);
+                   [](Real x) -> Real { return std::sin(x); }, 0.0, M_PI, 2.0);
         testSingle(I, "f(x) = cos(x)",
-                   static_cast<Real(*)(Real)>(std::cos), 0.0, M_PI, 0.0);
+                   [](Real x) -> Real { return std::cos(x); }, 0.0, M_PI, 0.0);
+
         testSingle(I, "f(x) = Gaussian(x)",
                    NormalDistribution(), -10.0, 10.0, 1.0);
         testSingle(I, "f(x) = Abcd2(x)",
@@ -79,109 +78,9 @@ namespace integrals_test {
 
     template <class T>
     void testDegeneratedDomain(const T& I) {
-        testSingle(I, "f(x) = 0 over [1, 1 + macheps]",
-                   constant<Real, Real>(0.0), 1.0, 1.0 + QL_EPSILON, 0.0);
+        testSingle(I, "f(x) = 0 over [1, 1 + macheps]", [](Real x) -> Real { return 0.0; }, 1.0,
+            1.0 + QL_EPSILON, 0.0);
     }
-
-}
-
-
-void IntegralTest::testSegment() {
-    BOOST_TEST_MESSAGE("Testing segment integration...");
-
-    using namespace integrals_test;
-
-    testSeveral(SegmentIntegral(10000));
-    testDegeneratedDomain(SegmentIntegral(10000));
-}
-
-void IntegralTest::testTrapezoid() {
-    BOOST_TEST_MESSAGE("Testing trapezoid integration...");
-
-    using namespace integrals_test;
-
-    testSeveral(TrapezoidIntegral<Default>(integrals_test::tolerance, 10000));
-    testDegeneratedDomain(TrapezoidIntegral<Default>(integrals_test::tolerance, 10000));
-}
-
-void IntegralTest::testMidPointTrapezoid() {
-    BOOST_TEST_MESSAGE("Testing mid-point trapezoid integration...");
-
-    using namespace integrals_test;
-
-    testSeveral(TrapezoidIntegral<MidPoint>(integrals_test::tolerance, 10000));
-    testDegeneratedDomain(TrapezoidIntegral<MidPoint>(integrals_test::tolerance, 10000));
-}
-
-void IntegralTest::testSimpson() {
-    BOOST_TEST_MESSAGE("Testing Simpson integration...");
-
-    using namespace integrals_test;
-
-    testSeveral(SimpsonIntegral(integrals_test::tolerance, 10000));
-    testDegeneratedDomain(SimpsonIntegral(integrals_test::tolerance, 10000));
-}
-
-void IntegralTest::testGaussKronrodAdaptive() {
-    BOOST_TEST_MESSAGE("Testing adaptive Gauss-Kronrod integration...");
-
-    using namespace integrals_test;
-
-    Size maxEvaluations = 1000;
-    testSeveral(GaussKronrodAdaptive(integrals_test::tolerance, maxEvaluations));
-    testDegeneratedDomain(GaussKronrodAdaptive(integrals_test::tolerance, maxEvaluations));
-}
-
-void IntegralTest::testGaussLobatto() {
-    BOOST_TEST_MESSAGE("Testing adaptive Gauss-Lobatto integration...");
-
-    using namespace integrals_test;
-
-    Size maxEvaluations = 1000;
-    testSeveral(GaussLobattoIntegral(maxEvaluations, integrals_test::tolerance));
-    // on degenerated domain [1,1+macheps] an exception is thrown
-    // which is also ok, but not tested here
-}
-
-void IntegralTest::testGaussKronrodNonAdaptive() {
-    BOOST_TEST_MESSAGE("Testing non-adaptive Gauss-Kronrod integration...");
-
-    using namespace integrals_test;
-
-    Real precision = integrals_test::tolerance;
-    Size maxEvaluations = 100;
-    Real relativeAccuracy = integrals_test::tolerance;
-    GaussKronrodNonAdaptive gaussKronrodNonAdaptive(precision, maxEvaluations,
-                                                    relativeAccuracy);
-    testSeveral(gaussKronrodNonAdaptive);
-    testDegeneratedDomain(gaussKronrodNonAdaptive);
-}
-
-void IntegralTest::testTwoDimensionalIntegration() {
-    BOOST_TEST_MESSAGE("Testing two dimensional adaptive "
-                       "Gauss-Lobatto integration...");
-
-    using namespace integrals_test;
-
-    const Size maxEvaluations = 1000;
-    const Real calculated = TwoDimensionalIntegral(
-        ext::shared_ptr<Integrator>(
-            new TrapezoidIntegral<Default>(integrals_test::tolerance, maxEvaluations)),
-        ext::shared_ptr<Integrator>(
-            new TrapezoidIntegral<Default>(integrals_test::tolerance, maxEvaluations)))(
-        std::multiplies<Real>(),
-        std::make_pair(0.0, 0.0), std::make_pair(1.0, 2.0));
-
-    const Real expected = 1.0;
-    if (std::fabs(calculated-expected) > integrals_test::tolerance) {
-        BOOST_FAIL(std::setprecision(10)
-                   << "two dimensional integration: "
-                   << "\n    calculated: " << calculated
-                   << "\n    expected:   " << expected);
-    }
-}
-
-namespace integrals_test {
 
     class sineF {
       public:
@@ -197,9 +96,183 @@ namespace integrals_test {
         }
     };
 
+    Real f1(Real x) {
+        return 1.2*x*x+3.2*x+3.1;
+    }
+
+    Real f2(Real x) {
+        return 4.3*(x-2.34)*(x-2.34)-6.2*(x-2.34) + f1(2.34);
+    }
+
+    std::vector<Real> x, y;
+
+    Real pw_fct(const Real t) { return QL_PIECEWISE_FUNCTION(x, y, t); }
+
+    void pw_check(const Integrator &in, const Real a, const Real b,
+                  const Real expected) {
+        Real calculated = in(pw_fct, a, b);
+        if (!close(calculated, expected))
+            BOOST_FAIL(std::setprecision(16)
+                       << "piecewise integration over [" << a << "," << b
+                       << "] failed: "
+                       << "\n   calculated: " << calculated
+                       << "\n   expected:   " << expected
+                       << "\n   difference: " << (calculated - expected));
+    }
+
+    template <class T>
+    void reportSiCiFail(
+        const std::string& name, T z, T c, T e, Real diff, Real tol) {
+        BOOST_FAIL(std::setprecision(16)
+                   << name << " calculation failed for " << z
+                   << "\n calculated: " << c
+                   << "\n expected:   " << e
+                   << "\n difference: " << diff
+                   << "\n tolerance:  " << tol);
+    }
 }
 
-void IntegralTest::testFolinIntegration() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(IntegralTest)
+
+BOOST_AUTO_TEST_CASE(testSegment) {
+    BOOST_TEST_MESSAGE("Testing segment integration...");
+
+    using namespace integrals_test;
+
+    testSeveral(SegmentIntegral(10000));
+    testDegeneratedDomain(SegmentIntegral(10000));
+}
+
+BOOST_AUTO_TEST_CASE(testTrapezoid) {
+    BOOST_TEST_MESSAGE("Testing trapezoid integration...");
+
+    using namespace integrals_test;
+
+    testSeveral(TrapezoidIntegral<Default>(integrals_test::tolerance, 10000));
+    testDegeneratedDomain(TrapezoidIntegral<Default>(integrals_test::tolerance, 10000));
+}
+
+BOOST_AUTO_TEST_CASE(testMidPointTrapezoid) {
+    BOOST_TEST_MESSAGE("Testing mid-point trapezoid integration...");
+
+    using namespace integrals_test;
+
+    testSeveral(TrapezoidIntegral<MidPoint>(integrals_test::tolerance, 10000));
+    testDegeneratedDomain(TrapezoidIntegral<MidPoint>(integrals_test::tolerance, 10000));
+}
+
+BOOST_AUTO_TEST_CASE(testSimpson) {
+    BOOST_TEST_MESSAGE("Testing Simpson integration...");
+
+    using namespace integrals_test;
+
+    testSeveral(SimpsonIntegral(integrals_test::tolerance, 10000));
+    testDegeneratedDomain(SimpsonIntegral(integrals_test::tolerance, 10000));
+}
+
+BOOST_AUTO_TEST_CASE(testGaussKronrodAdaptive) {
+    BOOST_TEST_MESSAGE("Testing adaptive Gauss-Kronrod integration...");
+
+    using namespace integrals_test;
+
+    Size maxEvaluations = 1000;
+    testSeveral(GaussKronrodAdaptive(integrals_test::tolerance, maxEvaluations));
+    testDegeneratedDomain(GaussKronrodAdaptive(integrals_test::tolerance, maxEvaluations));
+}
+
+BOOST_AUTO_TEST_CASE(testGaussLobatto) {
+    BOOST_TEST_MESSAGE("Testing adaptive Gauss-Lobatto integration...");
+
+    using namespace integrals_test;
+
+    Size maxEvaluations = 1000;
+    testSeveral(GaussLobattoIntegral(maxEvaluations, integrals_test::tolerance));
+    // on degenerated domain [1,1+macheps] an exception is thrown
+    // which is also ok, but not tested here
+}
+
+#ifdef QL_BOOST_HAS_TANH_SINH
+BOOST_AUTO_TEST_CASE(testTanhSinh) {
+    BOOST_TEST_MESSAGE("Testing tanh-sinh integration...");
+
+    using namespace integrals_test;
+    testSeveral(TanhSinhIntegral());
+}
+#endif
+
+BOOST_AUTO_TEST_CASE(testGaussLegendreIntegrator) {
+    BOOST_TEST_MESSAGE("Testing Gauss-Legendre integrator...");
+
+    using namespace integrals_test;
+
+    const GaussLegendreIntegrator integrator(64);
+    testSeveral(integrator);
+    testDegeneratedDomain(integrator);
+}
+
+BOOST_AUTO_TEST_CASE(testGaussChebyshevIntegrator) {
+    BOOST_TEST_MESSAGE("Testing Gauss-Chebyshev integrator...");
+
+    using namespace integrals_test;
+
+    const GaussChebyshevIntegrator integrator(64);
+    testSingle(integrator, "f(x) = Gaussian(x)",
+               NormalDistribution(), -10.0, 10.0, 1.0);
+    testDegeneratedDomain(integrator);
+}
+
+BOOST_AUTO_TEST_CASE(testGaussChebyshev2ndIntegrator) {
+    BOOST_TEST_MESSAGE("Testing Gauss-Chebyshev 2nd integrator...");
+
+    using namespace integrals_test;
+
+    const GaussChebyshev2ndIntegrator integrator(64);
+    testSingle(integrator, "f(x) = Gaussian(x)",
+               NormalDistribution(), -10.0, 10.0, 1.0);
+    testDegeneratedDomain(integrator);
+}
+
+BOOST_AUTO_TEST_CASE(testGaussKronrodNonAdaptive) {
+    BOOST_TEST_MESSAGE("Testing non-adaptive Gauss-Kronrod integration...");
+
+    using namespace integrals_test;
+
+    Real precision = integrals_test::tolerance;
+    Size maxEvaluations = 100;
+    Real relativeAccuracy = integrals_test::tolerance;
+    GaussKronrodNonAdaptive gaussKronrodNonAdaptive(precision, maxEvaluations,
+                                                    relativeAccuracy);
+    testSeveral(gaussKronrodNonAdaptive);
+    testDegeneratedDomain(gaussKronrodNonAdaptive);
+}
+
+BOOST_AUTO_TEST_CASE(testTwoDimensionalIntegration) {
+    BOOST_TEST_MESSAGE("Testing two dimensional adaptive "
+                       "Gauss-Lobatto integration...");
+
+    using namespace integrals_test;
+
+    const Size maxEvaluations = 1000;
+    const Real calculated = TwoDimensionalIntegral(
+        ext::shared_ptr<Integrator>(
+            new TrapezoidIntegral<Default>(integrals_test::tolerance, maxEvaluations)),
+        ext::shared_ptr<Integrator>(
+            new TrapezoidIntegral<Default>(integrals_test::tolerance, maxEvaluations)))(
+        std::multiplies<>(),
+        std::make_pair(0.0, 0.0), std::make_pair(1.0, 2.0));
+
+    const Real expected = 1.0;
+    if (std::fabs(calculated-expected) > integrals_test::tolerance) {
+        BOOST_FAIL(std::setprecision(10)
+                   << "two dimensional integration: "
+                   << "\n    calculated: " << calculated
+                   << "\n    expected:   " << expected);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testFolinIntegration) {
     BOOST_TEST_MESSAGE("Testing Folin's integral formulae...");
 
     using namespace integrals_test;
@@ -239,19 +312,7 @@ void IntegralTest::testFolinIntegration() {
     }
 }
 
-namespace integrals_test {
-
-    Real f1(Real x) {
-        return 1.2*x*x+3.2*x+3.1;
-    }
-
-    Real f2(Real x) {
-        return 4.3*(x-2.34)*(x-2.34)-6.2*(x-2.34) + f1(2.34);
-    }
-
-}
-
-void IntegralTest::testDiscreteIntegrals() {
+BOOST_AUTO_TEST_CASE(testDiscreteIntegrals) {
     BOOST_TEST_MESSAGE("Testing discrete integral formulae...");
 
     using namespace integrals_test;
@@ -290,7 +351,7 @@ void IntegralTest::testDiscreteIntegrals() {
     }
 }
 
-void IntegralTest::testDiscreteIntegrator() {
+BOOST_AUTO_TEST_CASE(testDiscreteIntegrator) {
     BOOST_TEST_MESSAGE("Testing discrete integrator formulae...");
 
     using namespace integrals_test;
@@ -299,26 +360,7 @@ void IntegralTest::testDiscreteIntegrator() {
     testSeveral(DiscreteTrapezoidIntegrator(3000));
 }
 
-namespace integrals_test{
-
-std::vector<Real> x, y;
-
-Real pw_fct(const Real t) { return QL_PIECEWISE_FUNCTION(x, y, t); }
-
-void pw_check(const Integrator &in, const Real a, const Real b,
-              const Real expected) {
-    Real calculated = in(pw_fct, a, b);
-    if (!close(calculated, expected))
-        BOOST_FAIL(std::setprecision(16)
-                   << "piecewise integration over [" << a << "," << b
-                   << "] failed: "
-                   << "\n   calculated: " << calculated
-                   << "\n   expected:   " << expected
-                   << "\n   difference: " << (calculated - expected));
-}
-} // empty namespace
-
-void IntegralTest::testPiecewiseIntegral() {
+BOOST_AUTO_TEST_CASE(testPiecewiseIntegral) {
     BOOST_TEST_MESSAGE("Testing piecewise integral...");
 
     using namespace integrals_test;
@@ -344,20 +386,7 @@ void IntegralTest::testPiecewiseIntegral() {
     pw_check(*piecewise, 9.0, 10.0, 6.0);
 }
 
-namespace integrals_test {
-    template <class T>
-    void reportSiCiFail(
-            const std::string& name, T z, T c, T e, Real diff, Real tol) {
-        BOOST_FAIL(std::setprecision(16)
-            << name << " calculation failed for " << z
-            << "\n calculated: " << c
-            << "\n expected:   " << e
-            << "\n difference: " << diff
-            << "\n tolerance:  " << tol);
-    }
-}
-
-void IntegralTest::testExponentialIntegral() {
+BOOST_AUTO_TEST_CASE(testExponentialIntegral) {
     BOOST_TEST_MESSAGE("Testing exponential integrals...");
 
     using namespace ExponentialIntegral;
@@ -509,9 +538,7 @@ void IntegralTest::testExponentialIntegral() {
     }
 }
 
-
-
-void IntegralTest::testRealSiCiIntegrals() {
+BOOST_AUTO_TEST_CASE(testRealSiCiIntegrals) {
     BOOST_TEST_MESSAGE("Testing real Ci and Si...");
 
     using namespace ExponentialIntegral;
@@ -559,27 +586,11 @@ void IntegralTest::testRealSiCiIntegrals() {
         si = Si(x);
         diff = std::fabs(si + i[1]);
         if (diff > tol) {
-            integrals_test::reportSiCiFail("SineIntegral", x, si, -i[1], diff, tol);
+            integrals_test::reportSiCiFail("SineIntegral", x, si, Real(-i[1]), diff, tol);
         }
     }
 }
 
-test_suite* IntegralTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Integration tests");
-    suite->add(QUANTLIB_TEST_CASE(&IntegralTest::testSegment));
-    suite->add(QUANTLIB_TEST_CASE(&IntegralTest::testTrapezoid));
-    suite->add(QUANTLIB_TEST_CASE(&IntegralTest::testMidPointTrapezoid));
-    suite->add(QUANTLIB_TEST_CASE(&IntegralTest::testSimpson));
-    suite->add(QUANTLIB_TEST_CASE(&IntegralTest::testGaussKronrodAdaptive));
-    suite->add(QUANTLIB_TEST_CASE(&IntegralTest::testGaussKronrodNonAdaptive));
-    suite->add(QUANTLIB_TEST_CASE(&IntegralTest::testGaussLobatto));
-    suite->add(QUANTLIB_TEST_CASE(&IntegralTest::testTwoDimensionalIntegration));
-    suite->add(QUANTLIB_TEST_CASE(&IntegralTest::testFolinIntegration));
-    suite->add(QUANTLIB_TEST_CASE(&IntegralTest::testDiscreteIntegrals));
-    suite->add(QUANTLIB_TEST_CASE(&IntegralTest::testDiscreteIntegrator));
-    suite->add(QUANTLIB_TEST_CASE(&IntegralTest::testPiecewiseIntegral));
-    suite->add(QUANTLIB_TEST_CASE(&IntegralTest::testExponentialIntegral));
-    suite->add(QUANTLIB_TEST_CASE(&IntegralTest::testRealSiCiIntegrals));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE_END()

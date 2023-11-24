@@ -66,8 +66,7 @@ Real ZabrModel::lognormalVolatility(const Real strike) const {
     return lognormalVolatility(std::vector<Real>(1, strike))[0];
 }
 
-Disposable<std::vector<Real> >
-ZabrModel::lognormalVolatility(const std::vector<Real> &strikes) const {
+std::vector<Real> ZabrModel::lognormalVolatility(const std::vector<Real> &strikes) const {
     std::vector<Real> x_ = x(strikes);
     std::vector<Real> result(strikes.size());
     std::transform(strikes.begin(), strikes.end(), x_.begin(), result.begin(),
@@ -86,8 +85,7 @@ Real ZabrModel::normalVolatility(const Real strike) const {
     return normalVolatility(std::vector<Real>(1, strike))[0];
 }
 
-Disposable<std::vector<Real> >
-ZabrModel::normalVolatility(const std::vector<Real> &strikes) const {
+std::vector<Real> ZabrModel::normalVolatility(const std::vector<Real> &strikes) const {
     std::vector<Real> x_ = x(strikes);
     std::vector<Real> result(strikes.size());
     std::transform(strikes.begin(), strikes.end(), x_.begin(), result.begin(),
@@ -106,8 +104,7 @@ Real ZabrModel::localVolatility(const Real f) const {
     return localVolatility(std::vector<Real>(1, f))[0];
 }
 
-Disposable<std::vector<Real> >
-ZabrModel::localVolatility(const std::vector<Real> &f) const {
+std::vector<Real> ZabrModel::localVolatility(const std::vector<Real> &f) const {
     std::vector<Real> x_ = x(f);
     std::vector<Real> result(f.size());
     std::transform(f.begin(), f.end(), x_.begin(), result.begin(),
@@ -119,8 +116,7 @@ Real ZabrModel::fdPrice(const Real strike) const {
     return fdPrice(std::vector<Real>(1, strike))[0];
 }
 
-Disposable<std::vector<Real> >
-ZabrModel::fdPrice(const std::vector<Real> &strikes) const {
+std::vector<Real> ZabrModel::fdPrice(const std::vector<Real> &strikes) const {
 
     // TODO check strikes to be increasing
     // TODO put these parameters somewhere
@@ -134,10 +130,19 @@ ZabrModel::fdPrice(const std::vector<Real> &strikes) const {
         (Size)std::ceil(expiryTime_ * 24); // number of steps in dimension t
     const Size dampingSteps = 5;           // thereof damping steps
 
+#if defined(__GNUC__) && (__GNUC__ >= 12)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
+
     // Layout
     std::vector<Size> dim(1, size);
     const ext::shared_ptr<FdmLinearOpLayout> layout(
         new FdmLinearOpLayout(dim));
+
+#if defined(__GNUC__) && (__GNUC__ >= 12)
+#pragma GCC diagnostic pop
+#endif
 
     // Mesher
     const ext::shared_ptr<Fdm1dMesher> m1(new Concentrating1dMesher(
@@ -158,8 +163,7 @@ ZabrModel::fdPrice(const std::vector<Real> &strikes) const {
 
     // initial values
     Array rhs(mesher->layout()->size());
-    for (FdmLinearOpIterator iter = layout->begin(); iter != layout->end();
-         ++iter) {
+    for (const auto& iter : *layout) {
         Real k = mesher->location(iter, 0);
         rhs[iter.index()] = std::max(forward_ - k, 0.0);
     }
@@ -270,8 +274,7 @@ Real ZabrModel::fullFdPrice(const Real strike) const {
     Array rhs(mesher->layout()->size());
     std::vector<Real> f_;
     std::vector<Real> v_;
-    for (FdmLinearOpIterator iter = layout->begin(); iter != layout->end();
-         ++iter) {
+    for (const auto& iter : *layout) {
         Real f = mesher->location(iter, 0);
         // Real v = mesher->location(iter, 0);
         rhs[iter.index()] = std::max(f - strike, 0.0);
@@ -309,8 +312,7 @@ Real ZabrModel::x(const Real strike) const {
     return x(std::vector<Real>(1, strike))[0];
 }
 
-Disposable<std::vector<Real> >
-ZabrModel::x(const std::vector<Real> &strikes) const {
+std::vector<Real> ZabrModel::x(const std::vector<Real> &strikes) const {
 
     QL_REQUIRE(strikes[0] > 0.0 || beta_ < 1.0,
                "strikes must be positive (" << strikes[0] << ") if beta = 1");
@@ -363,10 +365,10 @@ Real ZabrModel::y(const Real strike) const {
         return std::log(forward_ / strike) * std::pow(alpha_, gamma_ - 2.0);
     } else {
         return (strike < 0.0
-                    ? std::pow(forward_, 1.0 - beta_) +
-                          std::pow(-strike, 1.0 - beta_)
-                    : std::pow(forward_, 1.0 - beta_) -
-                          std::pow(strike, 1.0 - beta_)) *
+                    ? Real(std::pow(forward_, 1.0 - beta_) +
+                          std::pow(-strike, 1.0 - beta_))
+                    : Real(std::pow(forward_, 1.0 - beta_) -
+                          std::pow(strike, 1.0 - beta_))) *
                std::pow(alpha_, gamma_ - 2.0) / (1.0 - beta_);
     }
 }

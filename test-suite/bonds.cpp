@@ -19,7 +19,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "bonds.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/cashflows/iborcoupon.hpp>
 #include <ql/instruments/bonds/fixedratebond.hpp>
@@ -46,6 +46,10 @@
 #include <ql/cashflows/cashflows.hpp>
 #include <ql/pricingengines/bond/discountingbondengine.hpp>
 #include <ql/pricingengines/bond/bondfunctions.hpp>
+#include <ql/termstructures/credit/flathazardrate.hpp>
+#include <ql/termstructures/yield/flatforward.hpp>
+#include <ql/currencies/europe.hpp>
+#include <ql/pricingengines/bond/riskybondengine.hpp>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
@@ -64,9 +68,6 @@ namespace bonds_test {
         Calendar calendar;
         Date today;
         Real faceAmount;
-
-        // cleanup
-        SavedSettings backup;
 
         // setup
         CommonVars() {
@@ -90,7 +91,11 @@ namespace bonds_test {
 }
 
 
-void BondTest::testYield() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(BondsTest)
+
+BOOST_AUTO_TEST_CASE(testYield) {
 
     BOOST_TEST_MESSAGE("Testing consistency of bond price/yield calculation...");
 
@@ -106,7 +111,7 @@ void BondTest::testYield() {
     Natural settlementDays = 3;
     Real coupons[] = { 0.02, 0.05, 0.08 };
     Frequency frequencies[] = { Semiannual, Annual };
-    DayCounter bondDayCount = Thirty360();
+    DayCounter bondDayCount = Thirty360(Thirty360::BondBasis);
     BusinessDayConvention accrualConvention = Unadjusted;
     BusinessDayConvention paymentConvention = ModifiedFollowing;
     Real redemption = 100.0;
@@ -116,7 +121,7 @@ void BondTest::testYield() {
 
     for (int issueMonth : issueMonths) {
         for (int length : lengths) {
-            for (double& coupon : coupons) {
+            for (Real& coupon : coupons) {
                 for (auto& frequencie : frequencies) {
                     for (auto& n : compounding) {
 
@@ -132,7 +137,7 @@ void BondTest::testYield() {
                                            std::vector<Rate>(1, coupon), bondDayCount,
                                            paymentConvention, redemption, issue);
 
-                        for (double m : yields) {
+                        for (Real m : yields) {
 
                             Real price =
                                 BondFunctions::cleanPrice(bond, m, bondDayCount, n, frequencie);
@@ -190,7 +195,7 @@ void BondTest::testYield() {
     }
 }
 
-void BondTest::testAtmRate() {
+BOOST_AUTO_TEST_CASE(testAtmRate) {
 
     BOOST_TEST_MESSAGE("Testing consistency of bond price/ATM rate calculation...");
 
@@ -205,7 +210,7 @@ void BondTest::testAtmRate() {
     Natural settlementDays = 3;
     Real coupons[] = { 0.02, 0.05, 0.08 };
     Frequency frequencies[] = { Semiannual, Annual };
-    DayCounter bondDayCount = Thirty360();
+    DayCounter bondDayCount = Thirty360(Thirty360::BondBasis);
     BusinessDayConvention accrualConvention = Unadjusted;
     BusinessDayConvention paymentConvention = ModifiedFollowing;
     Real redemption = 100.0;
@@ -214,7 +219,7 @@ void BondTest::testAtmRate() {
 
     for (int issueMonth : issueMonths) {
         for (int length : lengths) {
-            for (double& coupon : coupons) {
+            for (Real& coupon : coupons) {
                 for (auto& frequencie : frequencies) {
                     Date dated = vars.calendar.advance(vars.today, issueMonth, Months);
                     Date issue = dated;
@@ -250,7 +255,7 @@ void BondTest::testAtmRate() {
     }
 }
 
-void BondTest::testZspread() {
+BOOST_AUTO_TEST_CASE(testZspread) {
 
     BOOST_TEST_MESSAGE("Testing consistency of bond price/z-spread calculation...");
 
@@ -269,7 +274,7 @@ void BondTest::testZspread() {
     Natural settlementDays = 3;
     Real coupons[] = { 0.02, 0.05, 0.08 };
     Frequency frequencies[] = { Semiannual, Annual };
-    DayCounter bondDayCount = Thirty360();
+    DayCounter bondDayCount = Thirty360(Thirty360::BondBasis);
     BusinessDayConvention accrualConvention = Unadjusted;
     BusinessDayConvention paymentConvention = ModifiedFollowing;
     Real redemption = 100.0;
@@ -279,7 +284,7 @@ void BondTest::testZspread() {
 
     for (int issueMonth : issueMonths) {
         for (int length : lengths) {
-            for (double& coupon : coupons) {
+            for (Real& coupon : coupons) {
                 for (auto& frequencie : frequencies) {
                     for (auto& n : compounding) {
 
@@ -295,7 +300,7 @@ void BondTest::testZspread() {
                                            std::vector<Rate>(1, coupon), bondDayCount,
                                            paymentConvention, redemption, issue);
 
-                        for (double spread : spreads) {
+                        for (Real spread : spreads) {
 
                             Real price = BondFunctions::cleanPrice(bond, *discountCurve, spread,
                                                                    bondDayCount, n, frequencie);
@@ -329,9 +334,7 @@ void BondTest::testZspread() {
     }
 }
 
-
-
-void BondTest::testTheoretical() {
+BOOST_AUTO_TEST_CASE(testTheoretical) {
 
     BOOST_TEST_MESSAGE("Testing theoretical bond price/yield calculation...");
 
@@ -354,7 +357,7 @@ void BondTest::testTheoretical() {
     Rate yields[] = { 0.03, 0.04, 0.05, 0.06, 0.07 };
 
     for (unsigned long length : lengths) {
-        for (double& coupon : coupons) {
+        for (Real& coupon : coupons) {
             for (auto& frequencie : frequencies) {
 
                 Date dated = vars.today;
@@ -374,7 +377,7 @@ void BondTest::testTheoretical() {
                 ext::shared_ptr<PricingEngine> bondEngine(new DiscountingBondEngine(discountCurve));
                 bond.setPricingEngine(bondEngine);
 
-                for (double m : yields) {
+                for (Real m : yields) {
 
                     rate->setValue(m);
 
@@ -411,8 +414,7 @@ void BondTest::testTheoretical() {
     }
 }
 
-
-void BondTest::testCached() {
+BOOST_AUTO_TEST_CASE(testCached) {
 
     BOOST_TEST_MESSAGE(
         "Testing bond price/yield calculation against cached values...");
@@ -684,9 +686,7 @@ void BondTest::testCached() {
     );
 }
 
-
-
-void BondTest::testCachedZero() {
+BOOST_AUTO_TEST_CASE(testCachedZero) {
 
     BOOST_TEST_MESSAGE("Testing zero-coupon bond prices against cached values...");
 
@@ -768,8 +768,7 @@ void BondTest::testCachedZero() {
     }
 }
 
-
-void BondTest::testCachedFixed() {
+BOOST_AUTO_TEST_CASE(testCachedFixed) {
 
     BOOST_TEST_MESSAGE("Testing fixed-coupon bond prices against cached values...");
 
@@ -868,12 +867,13 @@ void BondTest::testCachedFixed() {
     }
 }
 
-
-void BondTest::testCachedFloating() {
+BOOST_AUTO_TEST_CASE(testCachedFloating) {
 
     BOOST_TEST_MESSAGE("Testing floating-rate bond prices against cached values...");
 
     using namespace bonds_test;
+
+    bool usingAtParCoupons = IborCoupon::Settings::instance().usingAtParCoupons();
 
     CommonVars vars;
 
@@ -916,11 +916,7 @@ void BondTest::testCachedFloating() {
 
     setCouponPricer(bond1.cashflows(),pricer);
 
-    Real cachedPrice1;
-    if (!IborCoupon::usingAtParCoupons())
-        cachedPrice1 = 99.874645;
-    else
-        cachedPrice1 = 99.874646;
+    Real cachedPrice1 = usingAtParCoupons ? 99.874646 : 99.874645;
 
     Real price = bond1.cleanPrice();
     if (std::fabs(price-cachedPrice1) > tolerance) {
@@ -947,11 +943,7 @@ void BondTest::testCachedFloating() {
 
     setCouponPricer(bond2.cashflows(),pricer);
 
-    Real cachedPrice2;
-    if (!IborCoupon::usingAtParCoupons())
-        cachedPrice2 = 97.955904;
-    else
-        cachedPrice2 = 97.955904;
+    Real cachedPrice2 = 97.955904;
 
     price = bond2.cleanPrice();
     if (std::fabs(price-cachedPrice2) > tolerance) {
@@ -982,11 +974,7 @@ void BondTest::testCachedFloating() {
 
     setCouponPricer(bond3.cashflows(),pricer);
 
-    Real cachedPrice3;
-    if (!IborCoupon::usingAtParCoupons())
-        cachedPrice3 = 98.495458;
-    else
-        cachedPrice3 = 98.495459;
+    Real cachedPrice3 = usingAtParCoupons ? 98.495459 : 98.495458;
 
     price = bond3.cleanPrice();
     if (std::fabs(price-cachedPrice3) > tolerance) {
@@ -1009,11 +997,7 @@ void BondTest::testCachedFloating() {
 
     setCouponPricer(bond4.cashflows(), pricer);
 
-    Real cachedPrice4;
-    if (!IborCoupon::usingAtParCoupons())
-        cachedPrice4 = 98.892346;
-    else
-        cachedPrice4 = 98.892055;
+    Real cachedPrice4 = usingAtParCoupons ? 98.892055 : 98.892346;
 
     price = bond4.cleanPrice();
     if (std::fabs(price - cachedPrice4) > tolerance) {
@@ -1024,7 +1008,7 @@ void BondTest::testCachedFloating() {
     }
 }
 
-void BondTest::testBrazilianCached() {
+BOOST_AUTO_TEST_CASE(testBrazilianCached) {
 
     BOOST_TEST_MESSAGE(
         "Testing Brazilian public bond prices against Andima cached values...");
@@ -1035,7 +1019,6 @@ void BondTest::testBrazilianCached() {
 
     Natural settlementDays = 1;
     Real faceAmount = 1000.0;
-    Real redemption = 100.0;
     Date today(6,June,2007);
     Date issueDate(1,January,2007);
 
@@ -1073,7 +1056,7 @@ void BondTest::testBrazilianCached() {
     prices[5] = 1026.19716497;
 
     std::vector<InterestRate> couponRates(1);
-    couponRates[0] = InterestRate(0.1, Thirty360(), Compounded,Annual);
+    couponRates[0] = InterestRate(0.1, Thirty360(Thirty360::BondBasis), Compounded,Annual);
 
     for (Size bondIndex = 0; bondIndex < maturityDates.size(); bondIndex++) {
 
@@ -1087,13 +1070,15 @@ void BondTest::testBrazilianCached() {
                           Unadjusted, Unadjusted,
                           DateGeneration::Backward, false);
 
-        FixedRateBond bond(settlementDays,
-            faceAmount,
-            schedule,
-            couponRates,
-            Following,
-            redemption,
-            issueDate);
+        Leg coupons = FixedRateLeg(schedule)
+            .withNotionals(faceAmount)
+            .withCouponRates(couponRates)
+            .withPaymentAdjustment(Following);
+
+        Bond bond(settlementDays,
+                  schedule.calendar(),
+                  issueDate,
+                  coupons);
 
         Real cachedPrice = prices[bondIndex];
         Real price = faceAmount *
@@ -1112,7 +1097,7 @@ void BondTest::testBrazilianCached() {
     }
 }
 
-void BondTest::testExCouponGilt() {
+BOOST_AUTO_TEST_CASE(testExCouponGilt) {
     BOOST_TEST_MESSAGE(
         "Testing ex-coupon UK Gilt price against market values...");
     /* UK Gilts have an exCouponDate 7 business days before the coupon
@@ -1240,8 +1225,7 @@ void BondTest::testExCouponGilt() {
     }
 }
 
-
-void BondTest::testExCouponAustralianBond() {
+BOOST_AUTO_TEST_CASE(testExCouponAustralianBond) {
     BOOST_TEST_MESSAGE(
         "Testing ex-coupon Australian bond price against market values...");
     /* Australian Government Bonds have an exCouponDate 7 calendar
@@ -1374,11 +1358,9 @@ void BondTest::testExCouponAustralianBond() {
 /// This requires the use of the Schedule to be constructed
 /// with a custom date vector
 /// </summary>
-void BondTest::testBondFromScheduleWithDateVector()
+BOOST_AUTO_TEST_CASE(testBondFromScheduleWithDateVector)
 {
     BOOST_TEST_MESSAGE("Testing South African R2048 bond price using Schedule constructor with Date vector...");
-    SavedSettings backup;
-
     //When pricing bond from Yield To Maturity, use NullCalendar()
     Calendar calendar = NullCalendar();
 
@@ -1453,7 +1435,7 @@ void BondTest::testBondFromScheduleWithDateVector()
     }
 }
 
-void BondTest::testFixedBondWithGivenDates() {
+BOOST_AUTO_TEST_CASE(testFixedBondWithGivenDates) {
 
     BOOST_TEST_MESSAGE("Testing fixed-coupon bond built on schedule with given dates...");
 
@@ -1575,10 +1557,74 @@ void BondTest::testFixedBondWithGivenDates() {
     }
 }
 
-void BondTest::testFixedRateBondWithArbitrarySchedule() {
-    BOOST_TEST_MESSAGE("Testing fixed-rate bond with arbitrary schedule...");
-    SavedSettings backup;
+BOOST_AUTO_TEST_CASE(testRiskyBondWithGivenDates) {
 
+    BOOST_TEST_MESSAGE("Testing risky bond engine...");
+
+    using namespace bonds_test;
+
+    CommonVars vars;
+
+    Date today(22, November, 2005);
+    Settings::instance().evaluationDate() = today;
+
+    // Probability Structure
+    Handle<Quote> hazardRate(ext::shared_ptr<Quote>(new SimpleQuote(0.1)));
+    Handle<DefaultProbabilityTermStructure> defaultProbability(
+        ext::shared_ptr<DefaultProbabilityTermStructure>(
+            new FlatHazardRate(0, TARGET(), hazardRate, Actual360())));
+
+    // Yield term structure
+    RelinkableHandle<YieldTermStructure> riskFree;
+    riskFree.linkTo(ext::shared_ptr<YieldTermStructure>(new FlatForward(today, 0.02, Actual360())));
+    Schedule sch1(Date(30, November, 2004), Date(30, November, 2008), Period(Semiannual),
+                  UnitedStates(UnitedStates::GovernmentBond), Unadjusted, Unadjusted,
+                  DateGeneration::Backward, false);
+
+    // Create Bond
+    Natural settlementDays = 1;
+    std::vector<Real> notionals = {0.0167, 0.023, 0.03234, 0.034, 0.038, 0.042, 0.047, 0.053};
+
+    std::vector<Rate> couponRates(4);
+    couponRates[0] = 0.02875;
+    couponRates[1] = 0.03;
+    couponRates[2] = 0.03125;
+    couponRates[3] = 0.0325;
+    Real recoveryRate = 0.4;
+
+    FixedRateBond bond(settlementDays, vars.faceAmount, sch1, couponRates,
+                       ActualActual(ActualActual::ISMA), ModifiedFollowing, 100.0,
+                       Date(20, November, 2004));
+
+    // Create Engine
+    ext::shared_ptr<PricingEngine> bondEngine(new RiskyBondEngine(defaultProbability, recoveryRate, riskFree));
+    bond.setPricingEngine(bondEngine);
+
+    // Calculate and validate NPV and price
+    Real expected = 888458.819055;
+    Real calculated = bond.NPV();
+    Real tolerance = 1.0e-6;
+    if (std::fabs(expected - calculated) > tolerance) {
+        BOOST_FAIL("Failed to reproduce risky bond NPV:\n"
+                   << std::fixed
+                   << "    calculated: " << calculated << "\n"
+                   << "    expected:   " << expected << "\n"
+                   << "    error:      " << expected - calculated);
+    }
+
+    expected = 87.407883;
+    calculated = bond.cleanPrice();
+    if (std::fabs(expected - calculated) > tolerance) {
+        BOOST_FAIL("Failed to reproduce risky bond price:\n"
+                   << std::fixed
+                   << "    calculated: " << calculated << "\n"
+                   << "    expected:   " << expected << "\n"
+                   << "    error:      " << expected - calculated);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testFixedRateBondWithArbitrarySchedule) {
+    BOOST_TEST_MESSAGE("Testing fixed-rate bond with arbitrary schedule...");
     Calendar calendar = NullCalendar();
 
     Natural settlementDays = 3;
@@ -1615,13 +1661,11 @@ void BondTest::testFixedRateBondWithArbitrarySchedule() {
     BOOST_CHECK_NO_THROW(bond.cleanPrice());
 }
 
-
-void BondTest::testThirty360BondWithSettlementOn31st(){
+BOOST_AUTO_TEST_CASE(testThirty360BondWithSettlementOn31st){
     BOOST_TEST_MESSAGE(
         "Testing Thirty/360 bond with settlement on 31st of the month...");
 
     // cusip 3130A0X70, data is from Bloomberg
-    SavedSettings backup;
     Settings::instance().evaluationDate() = Date(28, July, 2017);
 
     Date datedDate(13, February, 2014);
@@ -1661,24 +1705,6 @@ void BondTest::testThirty360BondWithSettlementOn31st(){
     ASSERT_CLOSE("accrued", settlement, accrued, 0.7, 1e-6);
 }
 
-test_suite* BondTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Bond tests");
+BOOST_AUTO_TEST_SUITE_END()
 
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testYield));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testAtmRate));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testZspread));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testTheoretical));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testCached));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testCachedZero));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testCachedFixed));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testCachedFloating));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testBrazilianCached));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testFixedBondWithGivenDates));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testExCouponGilt));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testExCouponAustralianBond));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testBondFromScheduleWithDateVector));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testFixedRateBondWithArbitrarySchedule));
-    suite->add(QUANTLIB_TEST_CASE(&BondTest::testThirty360BondWithSettlementOn31st));
-    return suite;
-}
-
+BOOST_AUTO_TEST_SUITE_END()

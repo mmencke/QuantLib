@@ -17,7 +17,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "basismodels.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/cashflows/iborcoupon.hpp>
 #include <ql/compounding.hpp>
@@ -70,7 +70,7 @@ namespace {
         for (auto term : terms)
             dates.push_back(NullCalendar().advance(today, term, Unadjusted));
         std::vector<Real> ratesPlusSpread(rates);
-        for (double& k : ratesPlusSpread)
+        for (Real& k : ratesPlusSpread)
             k += spread;
         ext::shared_ptr<YieldTermStructure> ts =
             ext::shared_ptr<YieldTermStructure>(new InterpolatedZeroCurve<Cubic>(
@@ -113,7 +113,7 @@ namespace {
         for (auto& capletVol : capletVols) {
             std::vector<Handle<Quote> > row;
             row.reserve(capletVol.size());
-            for (double j : capletVol)
+            for (Real j : capletVol)
                 row.push_back(RelinkableHandle<Quote>(ext::shared_ptr<Quote>(new SimpleQuote(j))));
             capletVolQuotes.push_back(row);
         }
@@ -144,7 +144,7 @@ namespace {
         for (auto& swaptionVol : swaptionVols) {
             std::vector<Handle<Quote> > row;
             row.reserve(swaptionVol.size());
-            for (double j : swaptionVol)
+            for (Real j : swaptionVol)
                 row.push_back(RelinkableHandle<Quote>(ext::shared_ptr<Quote>(new SimpleQuote(j))));
             swaptionVolQuotes.push_back(row);
         }
@@ -155,6 +155,7 @@ namespace {
     }
 
     void testSwaptioncfs(bool contTenorSpread) {
+        bool usingAtParCoupons = IborCoupon::Settings::instance().usingAtParCoupons();
         // market data and floating rate index
         Handle<YieldTermStructure> discYTS = getYTS(terms, discRates);
         Handle<YieldTermStructure> proj6mYTS = getYTS(terms, proj6mRates);
@@ -169,7 +170,7 @@ namespace {
         Schedule floatSchedule(swapStart, swapEnd, Period(6, Months), TARGET(), ModifiedFollowing,
                                ModifiedFollowing, DateGeneration::Backward, false);
         ext::shared_ptr<VanillaSwap> swap(
-            new VanillaSwap(VanillaSwap::Payer, 10000.0, fixedSchedule, 0.03, Thirty360(),
+            new VanillaSwap(Swap::Payer, 10000.0, fixedSchedule, 0.03, Thirty360(Thirty360::BondBasis),
                             floatSchedule, euribor6m, 0.0, euribor6m->dayCounter()));
         swap->setPricingEngine(ext::shared_ptr<PricingEngine>(new DiscountingSwapEngine(discYTS)));
         // European exercise and swaption
@@ -209,11 +210,7 @@ namespace {
         // However, if indexed coupons are used the floating leg is not at par,
         // so we need to relax the tolerance to a level at which it will only
         // catch large errors.
-        Real tol2;
-        if (!IborCoupon::usingAtParCoupons())
-            tol2 = 0.02;
-        else
-            tol2 = tol;
+        Real tol2 = usingAtParCoupons ? tol : 0.02;
 
         SwaptionCashFlows singleCurveCashFlows(swaption, proj6mYTS, contTenorSpread);
         for (Size k = 1; k < singleCurveCashFlows.floatWeights().size() - 1; ++k) {
@@ -227,19 +224,22 @@ namespace {
 
 }
 
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
 
-void BasismodelsTest::testSwaptioncfsContCompSpread() {
+BOOST_AUTO_TEST_SUITE(BasismodelsExperimentalTest)
+
+BOOST_AUTO_TEST_CASE(testSwaptioncfsContCompSpread) {
     BOOST_TEST_MESSAGE(
         "Testing deterministic tenor basis model with continuous compounded spreads...");
     testSwaptioncfs(true);
 }
 
-void BasismodelsTest::testSwaptioncfsSimpleCompSpread() {
+BOOST_AUTO_TEST_CASE(testSwaptioncfsSimpleCompSpread) {
     BOOST_TEST_MESSAGE("Testing deterministic tenor basis model with simple compounded spreads...");
     testSwaptioncfs(false);
 }
 
-void BasismodelsTest::testTenoroptionletvts() {
+BOOST_AUTO_TEST_CASE(testTenoroptionletvts) {
     BOOST_TEST_MESSAGE("Testing volatility transformation for caplets/floorlets...");
     // market data and floating rate index
     Real spread = 0.01;
@@ -268,7 +268,7 @@ void BasismodelsTest::testTenoroptionletvts() {
         ext::shared_ptr<OptionletVolatilityStructure> optionletVTS6m(
             new TenorOptionletVTS(optionletVTS3m, euribor3m, euribor6m, corr));
         for (auto& capletTerm : capletTerms) {
-            for (double& capletStrike : capletStrikes) {
+            for (Real& capletStrike : capletStrikes) {
                 Real vol3m = optionletVTS3m->volatility(capletTerm, capletStrike, true);
                 Real vol6m = optionletVTS6m->volatility(capletTerm, capletStrike, true);
                 Real vol6mShifted =
@@ -303,7 +303,7 @@ void BasismodelsTest::testTenoroptionletvts() {
         ext::shared_ptr<OptionletVolatilityStructure> optionletVTS6m(
             new TenorOptionletVTS(optionletVTS3m, euribor3m, euribor6m, corr));
         for (Size i = 0; i < capletTerms.size(); ++i) {
-            for (double& capletStrike : capletStrikes) {
+            for (Real& capletStrike : capletStrikes) {
                 Real vol3m = optionletVTS3m->volatility(capletTerms[i], capletStrike, true);
                 Real vol6m = optionletVTS6m->volatility(capletTerms[i], capletStrike, true);
                 Real vol6mShifted =
@@ -323,7 +323,7 @@ void BasismodelsTest::testTenoroptionletvts() {
     }
 }
 
-void BasismodelsTest::testTenorswaptionvts() {
+BOOST_AUTO_TEST_CASE(testTenorswaptionvts) {
     BOOST_TEST_MESSAGE("Testing volatility transformation for swaptions...");
     // market data and floating rate index
     Real spread = 0.01;
@@ -337,7 +337,7 @@ void BasismodelsTest::testTenorswaptionvts() {
     {
         ext::shared_ptr<TenorSwaptionVTS> euribor3mSwVTS(
             new TenorSwaptionVTS(euribor6mSwVTS, discYTS, euribor6m, euribor3m, Period(1, Years),
-                                 Period(1, Years), Thirty360(), Thirty360()));
+                                 Period(1, Years), Thirty360(Thirty360::BondBasis), Thirty360(Thirty360::BondBasis)));
         // 6m vols should be slightly larger then 3m vols due to basis
         for (Size i = 0; i < swaptionVTSTerms.size(); ++i) {
             for (Size j = 0; j < swaptionVTSTerms.size(); ++j) {
@@ -356,7 +356,7 @@ void BasismodelsTest::testTenorswaptionvts() {
     {
         ext::shared_ptr<TenorSwaptionVTS> euribor6mSwVTS2(
             new TenorSwaptionVTS(euribor6mSwVTS, discYTS, euribor6m, euribor6m, Period(1, Years),
-                                 Period(1, Years), Thirty360(), Thirty360()));
+                                 Period(1, Years), Thirty360(Thirty360::BondBasis), Thirty360(Thirty360::BondBasis)));
         // 6m vols to 6m vols should yield initiial vols
         for (Size i = 0; i < swaptionVTSTerms.size(); ++i) {
             for (Size j = 0; j < swaptionVTSTerms.size(); ++j) {
@@ -377,10 +377,10 @@ void BasismodelsTest::testTenorswaptionvts() {
     {
         ext::shared_ptr<TenorSwaptionVTS> euribor3mSwVTS(
             new TenorSwaptionVTS(euribor6mSwVTS, discYTS, euribor6m, euribor3m, Period(1, Years),
-                                 Period(1, Years), Thirty360(), Thirty360()));
+                                 Period(1, Years), Thirty360(Thirty360::BondBasis), Thirty360(Thirty360::BondBasis)));
         ext::shared_ptr<TenorSwaptionVTS> euribor6mSwVTS2(new TenorSwaptionVTS(
             RelinkableHandle<SwaptionVolatilityStructure>(euribor3mSwVTS), discYTS, euribor3m,
-            euribor6m, Period(1, Years), Period(1, Years), Thirty360(), Thirty360()));
+            euribor6m, Period(1, Years), Period(1, Years), Thirty360(Thirty360::BondBasis), Thirty360(Thirty360::BondBasis)));
         // 6m vols to 6m vols should yield initiial vols
         for (Size i = 0; i < swaptionVTSTerms.size(); ++i) {
             for (Size j = 0; j < swaptionVTSTerms.size(); ++j) {
@@ -400,12 +400,6 @@ void BasismodelsTest::testTenorswaptionvts() {
     }
 }
 
+BOOST_AUTO_TEST_SUITE_END()
 
-test_suite* BasismodelsTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Basismodels tests");
-    suite->add(QUANTLIB_TEST_CASE(&BasismodelsTest::testSwaptioncfsContCompSpread));
-    suite->add(QUANTLIB_TEST_CASE(&BasismodelsTest::testSwaptioncfsSimpleCompSpread));
-    suite->add(QUANTLIB_TEST_CASE(&BasismodelsTest::testTenoroptionletvts));
-    suite->add(QUANTLIB_TEST_CASE(&BasismodelsTest::testTenorswaptionvts));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

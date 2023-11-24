@@ -3,6 +3,7 @@
 /*
  Copyright (C) 2001, 2002, 2003 Sadruddin Rejeb
  Copyright (C) 2004 Mike Parker
+ Copyright (C) 2021 Magnus Mencke
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -39,7 +40,7 @@ namespace QuantLib {
         eta_   = ConstantParameter(eta,   PositiveConstraint());
         rho_   = ConstantParameter(rho,   BoundaryConstraint(-1.0, 1.0));
 
-        generateArguments();
+        G2::generateArguments();
 
         registerWith(termStructure);
     }
@@ -159,14 +160,15 @@ namespace QuantLib {
             Size i;
             for (i=0; i<size_; i++) {
                 Real tau = (i==0 ? t_[0] - T_ : t_[i] - t_[i-1]);
-                Real c = (i==size_-1 ? (1.0+rate_*tau) : rate_*tau);
+                Real c = (i==size_-1 ? Real(1.0+rate_*tau) : rate_*tau);
                 lambda[i] = c*A_[i]*std::exp(-Ba_[i]*x);
             }
 
             SolvingFunction function(lambda, Bb_) ;
             Brent s1d;
             s1d.setMaxEvaluations(1000);
-            Real yb = s1d.solve(function, 1e-6, 0.00, -100.0, 100.0);
+            Real searchBound = std::max(10.0*sigmay_, 1.0);
+            Real yb = s1d.solve(function, 1e-6, 0.00, -searchBound, searchBound);
 
             Real h1 = (yb - muy_)/(sigmay_*txy) -
                 rhoxy_*(x  - mux_)/(sigmax_*txy);
@@ -216,11 +218,14 @@ namespace QuantLib {
     Real G2::swaption(const Swaption::arguments& arguments,
                       Rate fixedRate, Real range, Size intervals) const {
 
+        QL_REQUIRE(arguments.nominal != Null<Real>(),
+                   "non-constant nominals are not supported yet");
+
         Date settlement = termStructure()->referenceDate();
         DayCounter dayCounter = termStructure()->dayCounter();
         Time start = dayCounter.yearFraction(settlement,
                                              arguments.floatingResetDates[0]);
-        Real w = (arguments.type==VanillaSwap::Payer ? 1 : -1 );
+        Real w = (arguments.type==Swap::Payer ? 1 : -1 );
 
         std::vector<Time> fixedPayTimes(arguments.fixedPayDates.size());
         for (Size i=0; i<fixedPayTimes.size(); ++i)
@@ -236,9 +241,8 @@ namespace QuantLib {
         Real upper = function.mux() + range*function.sigmax();
         Real lower = function.mux() - range*function.sigmax();
         SegmentIntegral integrator(intervals);
-        return arguments.nominal*w*termStructure()->discount(start)*
+        return arguments.nominal * w * termStructure()->discount(start) *
             integrator(function, lower, upper);
     }
 
 }
-

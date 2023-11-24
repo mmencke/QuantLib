@@ -71,6 +71,9 @@ namespace QuantLib {
                    "non zero spread (" << arguments_.swap->spread()
                                        << ") not allowed"); // PC
 
+        QL_REQUIRE(arguments_.nominal != Null<Real>(),
+                   "non-constant nominals are not supported yet");
+
         Date referenceDate;
         DayCounter dayCounter;
 
@@ -100,7 +103,7 @@ namespace QuantLib {
                                maxStrike); // this is actually yStar
 
         Option::Type w =
-            arguments_.type == VanillaSwap::Payer ? Option::Put : Option::Call;
+            arguments_.type == Swap::Payer ? Option::Put : Option::Call;
         Size size = arguments_.fixedCoupons.size();
 
         Real value = 0.0;

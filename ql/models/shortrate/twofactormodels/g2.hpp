@@ -113,7 +113,6 @@ namespace QuantLib {
         Real V(Time t) const;
 
         class SwaptionPricingFunction;
-        friend class SwaptionPricingFunction;
     };
 
     class G2::Dynamics : public TwoFactorModel::ShortRateDynamics {
@@ -142,7 +141,7 @@ namespace QuantLib {
     */
     class G2::FittingParameter : public TermStructureFittingParameter {
       private:
-        class Impl : public Parameter::Impl {
+        class Impl final : public Parameter::Impl {
           public:
             Impl(Handle<YieldTermStructure> termStructure,
                  Real a,

@@ -29,16 +29,9 @@
 #if defined(QL_USE_STD_FUNCTION)
 #include <functional>
 #else
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#endif
 #include <boost/function.hpp>
 #include <boost/bind/bind.hpp>
 #include <boost/ref.hpp>
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic pop
-#endif
 #endif
 
 namespace QuantLib {
@@ -53,6 +46,10 @@ namespace QuantLib {
         namespace placeholders {
             using namespace std::placeholders;     // NOLINT(misc-unused-using-decls)
         }
+        /*! \deprecated To check if a function is empty, use it in a bool context
+                        instead of comparing it to QL_NULL_FUNCTION.
+                        Deprecated in version 1.32.
+        */
         #define QL_NULL_FUNCTION nullptr
         #else
         using boost::function;                     // NOLINT(misc-unused-using-decls)
@@ -74,6 +71,10 @@ namespace QuantLib {
             using ::_9;                            // NOLINT(misc-unused-using-decls)
             #endif
         }
+        /*! \deprecated To check if a function is empty, use it in a bool context
+                        instead of comparing it to QL_NULL_FUNCTION.
+                        Deprecated in version 1.32.
+        */
         #define QL_NULL_FUNCTION 0
         #endif
 

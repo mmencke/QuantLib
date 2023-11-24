@@ -26,7 +26,6 @@
 #define quantlib_global_bootstrap_hpp
 
 #include <ql/functional.hpp>
-#include <ql/math/functional.hpp>
 #include <ql/math/interpolations/linearinterpolation.hpp>
 #include <ql/math/optimization/levenbergmarquardt.hpp>
 #include <ql/termstructures/bootstraperror.hpp>
@@ -97,9 +96,9 @@ GlobalBootstrap<Curve>::GlobalBootstrap(
 template <class Curve> void GlobalBootstrap<Curve>::setup(Curve *ts) {
     ts_ = ts;
     for (Size j = 0; j < ts_->instruments_.size(); ++j)
-        ts_->registerWith(ts_->instruments_[j]);
+        ts_->registerWithObservables(ts_->instruments_[j]);
     for (Size j = 0; j < additionalHelpers_.size(); ++j)
-        ts_->registerWith(additionalHelpers_[j]);
+        ts_->registerWithObservables(additionalHelpers_[j]);
 
     // do not initialize yet: instruments could be invalid here
     // but valid later when bootstrapping is actually required
@@ -132,7 +131,7 @@ template <class Curve> void GlobalBootstrap<Curve>::initialize() const {
 
     // skip expired additional dates
     std::vector<Date> additionalDates;
-    if (!(additionalDates_ == QL_NULL_FUNCTION))
+    if (additionalDates_)
         additionalDates = additionalDates_();
     firstAdditionalDate_ = 0;
     if (!additionalDates.empty()) {
@@ -263,11 +262,11 @@ template <class Curve> void GlobalBootstrap<Curve>::calculate() const {
 
         Real value(const Array& x) const override {
             Array v = values(x);
-            std::transform(v.begin(), v.end(), v.begin(), square<Real>());
-            return std::sqrt(std::accumulate(v.begin(), v.end(), 0.0) / static_cast<Real>(v.size()));
+            std::transform(v.begin(), v.end(), v.begin(), [](Real x) -> Real { return x*x; });
+            return std::sqrt(std::accumulate(v.begin(), v.end(), Real(0.0)) / static_cast<Real>(v.size()));
         }
 
-        Disposable<Array> values(const Array& x) const override {
+        Array values(const Array& x) const override {
             for (Size i = 0; i < x.size(); ++i) {
                 Traits::updateGuess(ts_->data_, transformDirect(x[i], i), i + 1);
             }
@@ -277,15 +276,14 @@ template <class Curve> void GlobalBootstrap<Curve>::calculate() const {
                 result[i] = ts_->instruments_[firstHelper_ + i]->quote()->value() -
                             ts_->instruments_[firstHelper_ + i]->impliedQuote();
             }
-            if (!(additionalErrors_ == QL_NULL_FUNCTION)) {
+            if (additionalErrors_) {
                 Array tmp = additionalErrors_();
                 result.resize(numberHelpers_ + tmp.size());
                 for (Size i = 0; i < tmp.size(); ++i) {
                     result[numberHelpers_ + i] = tmp[i];
                 }
             }
-            Array asArray(result.begin(), result.end());
-            return asArray;
+            return Array(result.begin(), result.end());
         }
 
       private:

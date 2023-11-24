@@ -52,9 +52,7 @@ namespace QuantLib {
 
 
     DigitalCmsLeg::DigitalCmsLeg(Schedule schedule, ext::shared_ptr<SwapIndex> index)
-    : schedule_(std::move(schedule)), index_(std::move(index)), paymentAdjustment_(Following),
-      inArrears_(false), longCallOption_(Position::Long), callATM_(false),
-      longPutOption_(Position::Long), putATM_(false) {}
+    : schedule_(std::move(schedule)), index_(std::move(index)) {}
 
     DigitalCmsLeg& DigitalCmsLeg::withNotionals(Real notional) {
         notionals_ = std::vector<Real>(1,notional);
@@ -184,6 +182,11 @@ namespace QuantLib {
     DigitalCmsLeg& DigitalCmsLeg::withReplication(
                    const ext::shared_ptr<DigitalReplication>& replication) {
         replication_ = replication;
+        return *this;
+    }
+
+    DigitalCmsLeg& DigitalCmsLeg::withReplication() {
+        replication_ = ext::make_shared<DigitalReplication>();
         return *this;
     }
 

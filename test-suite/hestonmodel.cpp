@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2005, 2007, 2009, 2010, 2012, 2014, 2017 Klaus Spanderen
+ Copyright (C) 2022 Ignacio Anguita
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -17,7 +18,8 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "hestonmodel.hpp"
+#include "speedlevel.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/experimental/exoticoptions/analyticpdfhestonengine.hpp>
 #include <ql/instruments/dividendbarrieroption.hpp>
@@ -26,6 +28,7 @@
 #include <ql/math/optimization/differentialevolution.hpp>
 #include <ql/math/optimization/levenbergmarquardt.hpp>
 #include <ql/math/randomnumbers/rngtraits.hpp>
+#include <ql/math/functional.hpp>
 #include <ql/methods/finitedifferences/operators/numericaldifferentiation.hpp>
 #include <ql/methods/montecarlo/pathgenerator.hpp>
 #include <ql/models/equity/hestonmodel.hpp>
@@ -45,6 +48,7 @@
 #include <ql/pricingengines/vanilla/mceuropeanhestonengine.hpp>
 #include <ql/processes/hestonprocess.hpp>
 #include <ql/quotes/simplequote.hpp>
+#include <ql/termstructures/volatility/equityfx/hestonblackvolsurface.hpp>
 #include <ql/termstructures/yield/flatforward.hpp>
 #include <ql/termstructures/yield/zerocurve.hpp>
 #include <ql/time/calendars/nullcalendar.hpp>
@@ -91,7 +95,6 @@ namespace {
             dates.push_back(settlementDate + t[i]);
             rates.push_back(r[i]);
         }
-        // FLOATING_POINT_EXCEPTION
         Handle<YieldTermStructure> riskFreeTS(
             ext::make_shared<ZeroCurve>(dates, rates, dayCounter));
         
@@ -135,15 +138,102 @@ namespace {
         
         return marketData;
     }
-        
+
+    struct HestonProcessDiscretizationDesc {
+        HestonProcess::Discretization discretization;
+        Size nSteps;
+        std::string name;
+    };
+
+    struct HestonParameter {
+        Real v0, kappa, theta, sigma, rho;
+    };
+
+    void reportOnIntegrationMethodTest(VanillaOption& option,
+                                       const ext::shared_ptr<HestonModel>& model,
+                                       const AnalyticHestonEngine::Integration& integration,
+                                       AnalyticHestonEngine::ComplexLogFormula formula,
+                                       bool isAdaptive,
+                                       Real expected,
+                                       Real tol,
+                                       Size valuations,
+                                       const std::string& method) {
+
+        if (integration.isAdaptiveIntegration() != isAdaptive)
+            BOOST_ERROR(method << " is not an adaptive integration routine");
+
+        const ext::shared_ptr<AnalyticHestonEngine> engine =
+            ext::make_shared<AnalyticHestonEngine>(
+                model, formula, integration, 1e-9);
+
+        option.setPricingEngine(engine);
+        const Real calculated = option.NPV();
+
+        const Real error = std::fabs(calculated - expected);
+
+        if (std::isnan(error) || error > tol) {
+            BOOST_ERROR("failed to reproduce simple Heston Pricing with "
+                        << "\n    integration method: " << method
+                        <<  std::setprecision(12)
+                        << "\n    expected          : " << expected
+                        << "\n    calculated        : " << calculated
+                        << "\n    error             : " << error);
+        }
+
+        if (   valuations != Null<Size>()
+            && valuations != engine->numberOfEvaluations()) {
+            BOOST_ERROR("nubmer of function evaluations does not match "
+                        << "\n    integration method      : " << method
+                        << "\n    expected function calls : " << valuations
+                        << "\n    number of function calls: "
+                        << engine->numberOfEvaluations());
+        }
+    }
+
+    class LogCharacteristicFunction {
+      public:
+        LogCharacteristicFunction(Size n, Time t, ext::shared_ptr<COSHestonEngine> engine)
+        : t_(t), alpha_(0.0, 1.0), engine_(std::move(engine)) {
+            for (Size i=1; i < n; ++i, alpha_*=std::complex<Real>(0,1));
+        }
+
+        Real operator()(Real u) const {
+            return (std::log(engine_->chF(u, t_))/alpha_).real();
+        }
+
+      private:
+        const Time t_;
+        std::complex<Real> alpha_;
+        const ext::shared_ptr<COSHestonEngine> engine_;
+    };
+
+    class HestonIntegrationMaxBoundTestFct {
+      public:
+        explicit HestonIntegrationMaxBoundTestFct(Real maxBound)
+        : maxBound_(maxBound),
+          callCounter_(ext::make_shared<Size>(Size(0))) {}
+
+        Real operator()() {
+            ++(*callCounter_);
+            return maxBound_;
+        }
+
+        Size getCallCounter() const {
+            return *callCounter_;
+        }
+      private:
+        const Real maxBound_;
+        const ext::shared_ptr<Size> callCounter_;
+    };
 }
 
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
 
-void HestonModelTest::testBlackCalibration() {
+BOOST_AUTO_TEST_SUITE(HestonModelTest)
+
+BOOST_AUTO_TEST_CASE(testBlackCalibration) {
     BOOST_TEST_MESSAGE(
        "Testing Heston model calibration using a flat volatility surface...");
-
-    SavedSettings backup;
 
     /* calibrate a Heston model to a constant volatility surface without
        smile. expected result is a vanishing volatility of the volatility.
@@ -168,7 +258,6 @@ void HestonModelTest::testBlackCalibration() {
 
     for (auto& optionMaturitie : optionMaturities) {
         for (Real moneyness = -1.0; moneyness < 2.0; moneyness += 1.0) {
-            // FLOATING_POINT_EXCEPTION
             const Time tau = dayCounter.yearFraction(
                 riskFreeTS->referenceDate(),
                 calendar.advance(riskFreeTS->referenceDate(), optionMaturitie));
@@ -226,13 +315,10 @@ void HestonModelTest::testBlackCalibration() {
     }
 }
 
-
-void HestonModelTest::testDAXCalibration() {
+BOOST_AUTO_TEST_CASE(testDAXCalibration) {
 
     BOOST_TEST_MESSAGE(
              "Testing Heston model calibration using DAX volatility data...");
-
-    SavedSettings backup;
 
     Date settlementDate(5, July, 2002);
     Settings::instance().evaluationDate() = settlementDate;
@@ -288,14 +374,12 @@ void HestonModelTest::testDAXCalibration() {
     }
 }
 
-void HestonModelTest::testAnalyticVsBlack() {
+BOOST_AUTO_TEST_CASE(testAnalyticVsBlack) {
     BOOST_TEST_MESSAGE("Testing analytic Heston engine against Black formula...");
-
-    SavedSettings backup;
 
     Date settlementDate = Date::todaysDate();
     Settings::instance().evaluationDate() = settlementDate;
-    DayCounter dayCounter = ActualActual();
+    DayCounter dayCounter = ActualActual(ActualActual::ISDA);
     Date exerciseDate = settlementDate + 6*Months;
 
     ext::shared_ptr<StrikedTypePayoff> payoff(
@@ -318,7 +402,6 @@ void HestonModelTest::testAnalyticVsBlack() {
                    riskFreeTS, dividendTS, s0, v0, kappa, theta, sigma, rho));
 
     VanillaOption option(payoff, exercise);
-    // FLOATING_POINT_EXCEPTION
     ext::shared_ptr<PricingEngine> engine(
         ext::make_shared<AnalyticHestonEngine>(
             ext::make_shared<HestonModel>(process), 144));
@@ -358,15 +441,12 @@ void HestonModelTest::testAnalyticVsBlack() {
 
 }
 
-
-void HestonModelTest::testAnalyticVsCached() {
+BOOST_AUTO_TEST_CASE(testAnalyticVsCached) {
     BOOST_TEST_MESSAGE("Testing analytic Heston engine against cached values...");
-
-    SavedSettings backup;
 
     Date settlementDate(27, December, 2004);
     Settings::instance().evaluationDate() = settlementDate;
-    DayCounter dayCounter = ActualActual();
+    DayCounter dayCounter = ActualActual(ActualActual::ISDA);
     Date exerciseDate(28, March, 2005);
 
     ext::shared_ptr<StrikedTypePayoff> payoff(
@@ -458,17 +538,14 @@ void HestonModelTest::testAnalyticVsCached() {
     }
 }
 
-
-void HestonModelTest::testMcVsCached() {
+BOOST_AUTO_TEST_CASE(testMcVsCached) {
     BOOST_TEST_MESSAGE(
                 "Testing Monte Carlo Heston engine against cached values...");
-
-    SavedSettings backup;
 
     Date settlementDate(27, December, 2004);
     Settings::instance().evaluationDate() = settlementDate;
 
-    DayCounter dayCounter = ActualActual();
+    DayCounter dayCounter = ActualActual(ActualActual::ISDA);
     Date exerciseDate(28, March, 2005);
 
     ext::shared_ptr<StrikedTypePayoff> payoff(
@@ -516,10 +593,8 @@ void HestonModelTest::testMcVsCached() {
     }
 }
 
-void HestonModelTest::testFdBarrierVsCached() {
+BOOST_AUTO_TEST_CASE(testFdBarrierVsCached, *precondition(if_speed(Fast))) {
     BOOST_TEST_MESSAGE("Testing FD barrier Heston engine against cached values...");
-
-    SavedSettings backup;
 
     DayCounter dc = Actual360();
     Date today = Date::todaysDate();
@@ -571,15 +646,13 @@ void HestonModelTest::testFdBarrierVsCached() {
     }
 }
 
-void HestonModelTest::testFdVanillaVsCached() {
+BOOST_AUTO_TEST_CASE(testFdVanillaVsCached) {
     BOOST_TEST_MESSAGE("Testing FD vanilla Heston engine against cached values...");
-
-    SavedSettings backup;
 
     Date settlementDate(27, December, 2004);
     Settings::instance().evaluationDate() = settlementDate;
 
-    DayCounter dayCounter = ActualActual();
+    DayCounter dayCounter = ActualActual(ActualActual::ISDA);
     Date exerciseDate(28, March, 2005);
 
     ext::shared_ptr<StrikedTypePayoff> payoff(
@@ -616,17 +689,24 @@ void HestonModelTest::testFdVanillaVsCached() {
                    << "\n    expected:   " << expected
                    << "\n    error:      " << std::scientific << error);
     }
+}
 
+BOOST_AUTO_TEST_CASE(testFdVanillaWithDividendsVsCached, *precondition(if_speed(Fast))) {
     BOOST_TEST_MESSAGE("Testing FD vanilla Heston engine for discrete dividends...");
 
-    payoff = ext::make_shared<PlainVanillaPayoff>(Option::Call, 95.0);
-    s0 = Handle<Quote>(ext::make_shared<SimpleQuote>(100.0));
+    Date settlementDate(27, December, 2004);
+    Settings::instance().evaluationDate() = settlementDate;
 
-    riskFreeTS = Handle<YieldTermStructure>(flatRate(0.05, dayCounter));
-    dividendTS = Handle<YieldTermStructure>(flatRate(0.0, dayCounter));
+    DayCounter dayCounter = ActualActual(ActualActual::ISDA);
 
-    exerciseDate = Date(28, March, 2006);
-    exercise = ext::make_shared<EuropeanExercise>(exerciseDate);
+    auto payoff = ext::make_shared<PlainVanillaPayoff>(Option::Call, 95.0);
+
+    auto s0 = Handle<Quote>(ext::make_shared<SimpleQuote>(100.0));
+    auto riskFreeTS = Handle<YieldTermStructure>(flatRate(0.05, dayCounter));
+    auto dividendTS = Handle<YieldTermStructure>(flatRate(0.0, dayCounter));
+
+    auto exerciseDate = Date(28, March, 2006);
+    auto exercise = ext::make_shared<EuropeanExercise>(exerciseDate);
 
     std::vector<Date> dividendDates;
     std::vector<Real> dividends;
@@ -637,9 +717,11 @@ void HestonModelTest::testFdVanillaVsCached() {
         dividends.push_back(1.0);
     }
 
+    QL_DEPRECATED_DISABLE_WARNING
     DividendVanillaOption divOption(payoff, exercise,
                                     dividendDates, dividends);
-    process = ext::make_shared<HestonProcess>(
+    QL_DEPRECATED_ENABLE_WARNING
+    auto process = ext::make_shared<HestonProcess>(
                    riskFreeTS, dividendTS, s0, 0.04, 1.0, 0.04, 0.001, 0.0);
     divOption.setPricingEngine(
         MakeFdHestonVanillaEngine(ext::make_shared<HestonModel>(process))
@@ -647,12 +729,13 @@ void HestonModelTest::testFdVanillaVsCached() {
             .withXGrid(400)
             .withVGrid(100)
         );
-    calculated = divOption.NPV();
+
+    Real calculated = divOption.NPV();
     // Value calculated with an independent FD framework, validated with
     // an independent MC framework
-    expected = 12.946;
-    error = std::fabs(calculated - expected);
-    tolerance = 5.0e-3;
+    Real expected = 12.946;
+    Real error = std::fabs(calculated - expected);
+    Real tolerance = 5.0e-3;
 
     if (error > tolerance) {
         BOOST_FAIL("failed to reproduce discrete dividend price with FD engine"
@@ -661,22 +744,52 @@ void HestonModelTest::testFdVanillaVsCached() {
                    << "\n    error:      " << std::scientific << error);
     }
 
+
+    VanillaOption option(payoff, exercise);
+    option.setPricingEngine(
+        MakeFdHestonVanillaEngine(ext::make_shared<HestonModel>(process))
+        .withCashDividends(dividendDates, dividends)
+        .withTGrid(200)
+        .withXGrid(400)
+        .withVGrid(100)
+    );
+
+    calculated = option.NPV();
+    error = std::fabs(calculated - expected);
+
+    if (error > tolerance) {
+        BOOST_FAIL("failed to reproduce discrete dividend price with FD engine"
+                   << "\n    calculated: " << calculated
+                   << "\n    expected:   " << expected
+                   << "\n    error:      " << std::scientific << error);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testFdAmerican) {
     BOOST_TEST_MESSAGE("Testing FD vanilla Heston engine for american exercise...");
 
-    dividendTS = Handle<YieldTermStructure>(flatRate(0.03, dayCounter));
-    process = ext::make_shared<HestonProcess>(
+    Date settlementDate(27, December, 2004);
+    Settings::instance().evaluationDate() = settlementDate;
+
+    DayCounter dayCounter = ActualActual(ActualActual::ISDA);
+
+    auto s0 = Handle<Quote>(ext::make_shared<SimpleQuote>(100.0));
+    auto riskFreeTS = Handle<YieldTermStructure>(flatRate(0.05, dayCounter));
+    auto dividendTS = Handle<YieldTermStructure>(flatRate(0.03, dayCounter));
+    auto process = ext::make_shared<HestonProcess>(
                    riskFreeTS, dividendTS, s0, 0.04, 1.0, 0.04, 0.001, 0.0);
-    payoff = ext::make_shared<PlainVanillaPayoff>(Option::Put, 95.0);
-    exercise = ext::make_shared<AmericanExercise>(
+    auto payoff = ext::make_shared<PlainVanillaPayoff>(Option::Put, 95.0);
+    auto exerciseDate = Date(28, March, 2006);
+    auto exercise = ext::make_shared<AmericanExercise>(
             settlementDate, exerciseDate);
-    option = VanillaOption(payoff, exercise);
+    auto option = VanillaOption(payoff, exercise);
     option.setPricingEngine(
         MakeFdHestonVanillaEngine(ext::make_shared<HestonModel>(process))
             .withTGrid(200)
             .withXGrid(400)
             .withVGrid(100)
         );
-    calculated = option.NPV();
+    Real calculated = option.NPV();
 
     Handle<BlackVolTermStructure> volTS(flatVol(settlementDate, 0.2,
                                                   dayCounter));
@@ -685,10 +798,10 @@ void HestonModelTest::testFdVanillaVsCached() {
     ext::shared_ptr<PricingEngine> ref_engine(
         ext::make_shared<FdBlackScholesVanillaEngine>(ref_process, 200, 400));
     option.setPricingEngine(ref_engine);
-    expected = option.NPV();
+    Real expected = option.NPV();
 
-    error = std::fabs(calculated - expected);
-    tolerance = 1.0e-3;
+    Real error = std::fabs(calculated - expected);
+    Real tolerance = 1.0e-3;
 
     if (error > tolerance) {
         BOOST_FAIL("failed to reproduce american option price with FD engine"
@@ -698,15 +811,7 @@ void HestonModelTest::testFdVanillaVsCached() {
     }
 }
 
-namespace {
-    struct HestonProcessDiscretizationDesc {
-        HestonProcess::Discretization discretization;
-        Size nSteps;
-        std::string name;
-    };
-}
-
-void HestonModelTest::testKahlJaeckelCase() {
+BOOST_AUTO_TEST_CASE(testKahlJaeckelCase, *precondition(if_speed(Fast))) {
     BOOST_TEST_MESSAGE(
           "Testing MC and FD Heston engines for the Kahl-Jaeckel example...");
 
@@ -716,12 +821,10 @@ void HestonModelTest::testKahlJaeckelCase() {
        "QuantLib code is very high quatlity"
     */
 
-    SavedSettings backup;
-
     Date settlementDate(30, March, 2007);
     Settings::instance().evaluationDate() = settlementDate;
 
-    DayCounter dayCounter = ActualActual();
+    DayCounter dayCounter = ActualActual(ActualActual::ISDA);
     Date exerciseDate(30, March, 2017);
 
     const ext::shared_ptr<StrikedTypePayoff> payoff(
@@ -860,21 +963,14 @@ void HestonModelTest::testKahlJaeckelCase() {
     }
 }
 
-namespace {
-    struct HestonParameter {
-        Real v0, kappa, theta, sigma, rho; };
-}
-
-void HestonModelTest::testDifferentIntegrals() {
+BOOST_AUTO_TEST_CASE(testDifferentIntegrals, *precondition(if_speed(Fast))) {
     BOOST_TEST_MESSAGE(
        "Testing different numerical Heston integration algorithms...");
-
-    SavedSettings backup;
 
     const Date settlementDate(27, December, 2004);
     Settings::instance().evaluationDate() = settlementDate;
 
-    const DayCounter dayCounter = ActualActual();
+    const DayCounter dayCounter = ActualActual(ActualActual::ISDA);
 
     Handle<YieldTermStructure> riskFreeTS(flatRate(0.05, dayCounter));
     Handle<YieldTermStructure> dividendTS(flatRate(0.03, dayCounter));
@@ -938,7 +1034,7 @@ void HestonModelTest::testDifferentIntegrals() {
             ext::shared_ptr<Exercise> exercise(
                 ext::make_shared<EuropeanExercise>(settlementDate + Period(maturitie, Months)));
 
-            for (double strike : strikes) {
+            for (Real strike : strikes) {
                 for (auto type : types) {
 
                     ext::shared_ptr<StrikedTypePayoff> payoff(
@@ -990,15 +1086,13 @@ void HestonModelTest::testDifferentIntegrals() {
     }
 }
 
-void HestonModelTest::testMultipleStrikesEngine() {
+BOOST_AUTO_TEST_CASE(testMultipleStrikesEngine) {
     BOOST_TEST_MESSAGE("Testing multiple-strikes FD Heston engine...");
-
-    SavedSettings backup;
 
     Date settlementDate(27, December, 2004);
     Settings::instance().evaluationDate() = settlementDate;
 
-    DayCounter dayCounter = ActualActual();
+    DayCounter dayCounter = ActualActual(ActualActual::ISDA);
     Date exerciseDate(28, March, 2006);
 
     ext::shared_ptr<Exercise> exercise(
@@ -1024,7 +1118,7 @@ void HestonModelTest::testMultipleStrikesEngine() {
     multiStrikeEngine->enableMultipleStrikesCaching(strikes);
 
     Real relTol = 5e-3;
-    for (double& strike : strikes) {
+    for (Real& strike : strikes) {
         ext::shared_ptr<StrikedTypePayoff> payoff(
             ext::make_shared<PlainVanillaPayoff>(Option::Put, strike));
 
@@ -1069,16 +1163,12 @@ void HestonModelTest::testMultipleStrikesEngine() {
     }
 }
 
-
-
-void HestonModelTest::testAnalyticPiecewiseTimeDependent() {
+BOOST_AUTO_TEST_CASE(testAnalyticPiecewiseTimeDependent) {
     BOOST_TEST_MESSAGE("Testing analytic piecewise time dependent Heston prices...");
-
-    SavedSettings backup;
 
     Date settlementDate(27, December, 2004);
     Settings::instance().evaluationDate() = settlementDate;
-    DayCounter dayCounter = ActualActual();
+    DayCounter dayCounter = ActualActual(ActualActual::ISDA);
     Date exerciseDate(28, March, 2005);
 
     ext::shared_ptr<StrikedTypePayoff> payoff(
@@ -1146,11 +1236,9 @@ void HestonModelTest::testAnalyticPiecewiseTimeDependent() {
     }
 }
 
-void HestonModelTest::testDAXCalibrationOfTimeDependentModel() {
+BOOST_AUTO_TEST_CASE(testDAXCalibrationOfTimeDependentModel) {
     BOOST_TEST_MESSAGE(
              "Testing time-dependent Heston model calibration...");
-
-    SavedSettings backup;
 
     Date settlementDate(5, July, 2002);
     Settings::instance().evaluationDate() = settlementDate;
@@ -1219,15 +1307,13 @@ void HestonModelTest::testDAXCalibrationOfTimeDependentModel() {
     }
 }
 
-void HestonModelTest::testAlanLewisReferencePrices() {
+BOOST_AUTO_TEST_CASE(testAlanLewisReferencePrices) {
     BOOST_TEST_MESSAGE("Testing Alan Lewis reference prices...");
 
     /*
      * testing Alan Lewis reference prices posted in
      * http://wilmott.com/messageview.cfm?catid=34&threadid=90957
      */
-
-    SavedSettings backup;
 
     const Date settlementDate(5, July, 2002);
     Settings::instance().evaluationDate() = settlementDate;
@@ -1327,121 +1413,8 @@ void HestonModelTest::testAlanLewisReferencePrices() {
     }
 }
 
-void HestonModelTest::testAnalyticPDFHestonEngine() {
-    BOOST_TEST_MESSAGE("Testing analytic PDF Heston engine...");
-
-    SavedSettings backup;
-
-    const Date settlementDate(5, January, 2014);
-    Settings::instance().evaluationDate() = settlementDate;
-
-    const DayCounter dayCounter = Actual365Fixed();
-    const Handle<YieldTermStructure> riskFreeTS(flatRate(0.07, dayCounter));
-    const Handle<YieldTermStructure> dividendTS(flatRate(0.185, dayCounter));
-
-    const Handle<Quote> s0(ext::make_shared<SimpleQuote>(100.0));
-
-    const Real v0    =  0.1;
-    const Real rho   = -0.5;
-    const Real sigma =  1.0;
-    const Real kappa =  4.0;
-    const Real theta =  0.05;
-
-    const ext::shared_ptr<HestonModel> model(
-        ext::make_shared<HestonModel>(
-            ext::make_shared<HestonProcess>(riskFreeTS, dividendTS,
-                              s0, v0, kappa, theta, sigma, rho)));
-
-    const Real tol = 1e-6;
-    const ext::shared_ptr<AnalyticPDFHestonEngine> pdfEngine(
-        ext::make_shared<AnalyticPDFHestonEngine>(model, tol));
-
-    const ext::shared_ptr<PricingEngine> analyticEngine(
-        ext::make_shared<AnalyticHestonEngine>(model, 178));
-
-    const Date maturityDate(5, July, 2014);
-    const Time maturity = dayCounter.yearFraction(settlementDate, maturityDate);
-    const ext::shared_ptr<Exercise> exercise(
-        ext::make_shared<EuropeanExercise>(maturityDate));
-
-    // 1. check a plain vanilla call option
-    for (Real strike=40; strike < 190; strike+=20) {
-        const ext::shared_ptr<StrikedTypePayoff> vanillaPayoff(
-            ext::make_shared<PlainVanillaPayoff>(Option::Call, strike));
-
-        VanillaOption planVanillaOption(vanillaPayoff, exercise);
-
-        planVanillaOption.setPricingEngine(pdfEngine);
-        const Real calculated = planVanillaOption.NPV();
-
-        planVanillaOption.setPricingEngine(analyticEngine);
-        const Real expected = planVanillaOption.NPV();
-
-        if (std::fabs(calculated-expected) > 3*tol) {
-            BOOST_FAIL(
-                   "failed to reproduce plain vanilla european prices with"
-                   " the analytic probability density engine"
-                << "\n    strike     : " << strike
-                << "\n    expected   : " << expected
-                << "\n    calculated : " << calculated
-                << "\n    diff       : " << std::fabs(calculated-expected)
-                << "\n    tol        ; " << tol);
-        }
-    }
-
-    // 2. digital call option (approx. with a call spread)
-    for (Real strike=40; strike < 190; strike+=10) {
-        VanillaOption digitalOption(
-            ext::make_shared<CashOrNothingPayoff>(Option::Call, strike, 1.0),
-            exercise);
-        digitalOption.setPricingEngine(pdfEngine);
-        const Real calculated = digitalOption.NPV();
-
-        const Real eps = 0.01;
-        VanillaOption longCall(
-            ext::make_shared<PlainVanillaPayoff>(Option::Call, strike-eps),
-            exercise);
-        longCall.setPricingEngine(analyticEngine);
-
-        VanillaOption shortCall(
-            ext::make_shared<PlainVanillaPayoff>(Option::Call, strike+eps),
-            exercise);
-        shortCall.setPricingEngine(analyticEngine);
-
-        const Real expected = (longCall.NPV() - shortCall.NPV())/(2*eps);
-        if (std::fabs(calculated-expected) > tol) {
-            BOOST_FAIL(
-                   "failed to reproduce european digital prices with"
-                   " the analytic probability density engine"
-                << "\n    strike     : " << strike
-                << "\n    expected   : " << expected
-                << "\n    calculated : " << calculated
-                << "\n    diff       : " << std::fabs(calculated-expected)
-                << "\n    tol        : " << tol);
-        }
-
-        const DiscountFactor d = riskFreeTS->discount(maturityDate);
-        const Real expectedCDF = 1.0 - expected/d;
-        const Real calculatedCDF = pdfEngine->cdf(strike, maturity);
-
-        if (std::fabs(expectedCDF - calculatedCDF) > tol) {
-            BOOST_FAIL(
-                   "failed to reproduce cumulative distribution function"
-                << "\n    strike        : " << strike
-                << "\n    expected CDF  : " << expectedCDF
-                << "\n    calculated CDF: " << calculatedCDF
-                << "\n    diff          : "
-                << std::fabs(calculatedCDF-expectedCDF)
-                << "\n    tol           : " << tol);
-
-        }
-    }
-}
-
-void HestonModelTest::testExpansionOnAlanLewisReference() {
+BOOST_AUTO_TEST_CASE(testExpansionOnAlanLewisReference) {
     BOOST_TEST_MESSAGE("Testing expansion on Alan Lewis reference prices...");
-
-    SavedSettings backup;
 
     const Date settlementDate(5, July, 2002);
     Settings::instance().evaluationDate() = settlementDate;
@@ -1528,10 +1501,8 @@ void HestonModelTest::testExpansionOnAlanLewisReference() {
     }
 }
 
-void HestonModelTest::testExpansionOnFordeReference() {
+BOOST_AUTO_TEST_CASE(testExpansionOnFordeReference) {
     BOOST_TEST_MESSAGE("Testing expansion on Forde reference prices...");
-
-    SavedSettings backup;
 
     const Real forward = 100.0;
     const Real v0      =  0.04;
@@ -1594,54 +1565,9 @@ void HestonModelTest::testExpansionOnFordeReference() {
     }
 }
 
-namespace {
-    void reportOnIntegrationMethodTest(VanillaOption& option,
-                                       const ext::shared_ptr<HestonModel>& model,
-                                       const AnalyticHestonEngine::Integration& integration,
-                                       AnalyticHestonEngine::ComplexLogFormula formula,
-                                       bool isAdaptive,
-                                       Real expected,
-                                       Real tol,
-                                       Size valuations,
-                                       const std::string& method) {
-
-        if (integration.isAdaptiveIntegration() != isAdaptive)
-            BOOST_ERROR(method << " is not an adaptive integration routine");
-
-        const ext::shared_ptr<AnalyticHestonEngine> engine =
-            ext::make_shared<AnalyticHestonEngine>(
-                model, formula, integration, 1e-9);
-
-        option.setPricingEngine(engine);
-        const Real calculated = option.NPV();
-
-        const Real error = std::fabs(calculated - expected);
-
-        if (std::isnan(error) || error > tol) {
-            BOOST_ERROR("failed to reproduce simple Heston Pricing with "
-                    << "\n    integration method: " << method
-                    <<  std::setprecision(12)
-                    << "\n    expected          : " << expected
-                    << "\n    calculated        : " << calculated
-                    << "\n    error             : " << error);
-        }
-
-        if (   valuations != Null<Size>()
-            && valuations != engine->numberOfEvaluations()) {
-            BOOST_ERROR("nubmer of function evaluations does not match "
-                    << "\n    integration method      : " << method
-                    << "\n    expected function calls : " << valuations
-                    << "\n    number of function calls: "
-                    << engine->numberOfEvaluations());
-        }
-    }
-}
-
-void HestonModelTest::testAllIntegrationMethods() {
+BOOST_AUTO_TEST_CASE(testAllIntegrationMethods) {
     BOOST_TEST_MESSAGE("Testing semi-analytic Heston pricing with all "
                        "integration methods...");
-
-    SavedSettings backup;
 
     const Date settlementDate(7, February, 2017);
     Settings::instance().evaluationDate() = settlementDate;
@@ -1839,29 +1765,8 @@ void HestonModelTest::testAllIntegrationMethods() {
         "Trapezoid with Andersen Piterbarg control variate");
 }
 
-namespace {
-    class LogCharacteristicFunction {
-      public:
-        LogCharacteristicFunction(Size n, Time t, ext::shared_ptr<COSHestonEngine> engine)
-        : t_(t), alpha_(0.0, 1.0), engine_(std::move(engine)) {
-            for (Size i=1; i < n; ++i, alpha_*=std::complex<Real>(0,1));
-        }
-
-        Real operator()(Real u) const {
-            return (std::log(engine_->chF(u, t_))/alpha_).real();
-        }
-
-      private:
-        const Time t_;
-        std::complex<Real> alpha_;
-        const ext::shared_ptr<COSHestonEngine> engine_;
-    };
-}
-
-void HestonModelTest::testCosHestonCumulants() {
+BOOST_AUTO_TEST_CASE(testCosHestonCumulants) {
     BOOST_TEST_MESSAGE("Testing Heston COS cumulants...");
-
-    SavedSettings backup;
 
     const Date settlementDate(7, February, 2017);
     Settings::instance().evaluationDate() = settlementDate;
@@ -1950,10 +1855,8 @@ void HestonModelTest::testCosHestonCumulants() {
     }
 }
 
-void HestonModelTest::testCosHestonEngine() {
+BOOST_AUTO_TEST_CASE(testCosHestonEngine) {
     BOOST_TEST_MESSAGE("Testing Heston pricing via COS method...");
-
-    SavedSettings backup;
 
     const Date settlementDate(7, February, 2017);
     Settings::instance().evaluationDate() = settlementDate;
@@ -2014,10 +1917,54 @@ void HestonModelTest::testCosHestonEngine() {
     }
 }
 
-void HestonModelTest::testCharacteristicFct() {
-    BOOST_TEST_MESSAGE("Testing Heston characteristic function...");
+BOOST_AUTO_TEST_CASE(testCosHestonEngineTruncation) {
+    BOOST_TEST_MESSAGE("Testing Heston pricing via COS method outside truncation bounds...");
+    
+    const Date todaysDate(22, August, 2022);
+    const Date maturity(23, August, 2022);
+    Settings::instance().evaluationDate() = todaysDate;
 
-    SavedSettings backup;
+    Option::Type type(Option::Call);
+    Real underlying = 100;
+    Real strike = 200;
+    Rate dividendYield = 0;
+    Rate riskFreeRate = 0;
+    DayCounter dayCounter = Actual365Fixed();
+
+    ext::shared_ptr<Exercise> europeanExercise(new EuropeanExercise(maturity));
+    Handle<Quote> underlyingH(ext::shared_ptr<Quote>(new SimpleQuote(underlying)));
+    Handle<YieldTermStructure> riskFreeTS(
+        ext::shared_ptr<YieldTermStructure>(
+            new FlatForward(todaysDate, riskFreeRate, dayCounter)));
+    Handle<YieldTermStructure> dividendTS(
+        ext::shared_ptr<YieldTermStructure>(
+            new FlatForward(todaysDate, dividendYield, dayCounter)));
+
+    ext::shared_ptr<StrikedTypePayoff> payoff(new PlainVanillaPayoff(type, strike));
+    VanillaOption europeanOption(payoff, europeanExercise);
+
+    ext::shared_ptr<HestonProcess> hestonProcess(
+            new HestonProcess(riskFreeTS, dividendTS, underlyingH, .007, .8, .007, .1, -.2));
+    ext::shared_ptr<HestonModel> hestonModel(
+            new HestonModel(hestonProcess));
+    
+    europeanOption.setPricingEngine(ext::shared_ptr<PricingEngine>(
+                new COSHestonEngine(hestonModel)));
+                
+    const Real tol = 1e-7;
+    const Real error = std::fabs(europeanOption.NPV() - 0.0);
+
+    if (error > tol) {
+        BOOST_ERROR(" failed to reproduce prices with COSHestonEngine"
+                << "\n    expected:   " << 0.0
+                << "\n    calculated: " << europeanOption.NPV()
+                << "\n    difference: " << error);
+    }
+    
+}
+
+BOOST_AUTO_TEST_CASE(testCharacteristicFct) {
+    BOOST_TEST_MESSAGE("Testing Heston characteristic function...");
 
     const Date settlementDate(30, March, 2017);
     Settings::instance().evaluationDate() = settlementDate;
@@ -2046,9 +1993,9 @@ void HestonModelTest::testCharacteristicFct() {
     const COSHestonEngine cosEngine(model);
     const AnalyticHestonEngine analyticEngine(model);
 
-    const Real tol = 100*QL_EPSILON;
-    for (double i : u) {
-        for (double j : t) {
+    constexpr double tol = 100*QL_EPSILON;
+    for (Real i : u) {
+        for (Real j : t) {
             const std::complex<Real> c = cosEngine.chF(i, j);
             const std::complex<Real> a = analyticEngine.chF(i, j);
 
@@ -2063,11 +2010,9 @@ void HestonModelTest::testCharacteristicFct() {
     }
 }
 
-void HestonModelTest::testAndersenPiterbargPricing() {
+BOOST_AUTO_TEST_CASE(testAndersenPiterbargPricing) {
     BOOST_TEST_MESSAGE("Testing Andersen-Piterbarg method to "
                        "price under the Heston model...");
-
-    SavedSettings backup;
 
     const Date settlementDate(30, March, 2017);
     Settings::instance().evaluationDate() = settlementDate;
@@ -2144,7 +2089,8 @@ void HestonModelTest::testAndersenPiterbargPricing() {
 
     const std::string algos[] = {
           "Gauss-Laguerre", "Gauss-Lobatto",
-          "Discrete Simpson", "Discrete Trapezoid", "Trapezoid"
+          "Discrete Simpson", "Discrete Trapezoid", "Trapezoid",
+          "Exponential Fitting"
     };
 
     const ext::shared_ptr<PricingEngine> analyticEngine(
@@ -2166,7 +2112,7 @@ void HestonModelTest::testAndersenPiterbargPricing() {
         const ext::shared_ptr<Exercise> exercise = ext::make_shared<EuropeanExercise>(maturityDate);
 
         for (auto optionType : optionTypes) {
-            for (double strike : strikes) {
+            for (Real strike : strikes) {
                 VanillaOption option(ext::make_shared<PlainVanillaPayoff>(optionType, strike),
                                      exercise);
 
@@ -2194,12 +2140,9 @@ void HestonModelTest::testAndersenPiterbargPricing() {
     }
 }
 
-
-void HestonModelTest::testAndersenPiterbargControlVariateIntegrand() {
+BOOST_AUTO_TEST_CASE(testAndersenPiterbargControlVariateIntegrand) {
     BOOST_TEST_MESSAGE("Testing Andersen-Piterbarg Integrand "
                         "with control variate...");
-
-    SavedSettings backup;
 
     const Date settlementDate(17, April, 2017);
     Settings::instance().evaluationDate() = settlementDate;
@@ -2280,18 +2223,18 @@ void HestonModelTest::testAndersenPiterbargControlVariateIntegrand() {
         // Corrado C. and T. Su, (1996-b),
         // “Skewness and Kurtosis in S&P 500 IndexReturns Implied by Option Prices”,
         // Journal of Financial Research 19 (2), 175-192.
-        square<Real>()(blackFormulaImpliedStdDev(
+        squared(blackFormulaImpliedStdDev(
             Option::Call, strike, fwd, bsNPV + skew*q3, df)),
-        square<Real>()(blackFormulaImpliedStdDev(
+        squared(blackFormulaImpliedStdDev(
             Option::Call, strike, fwd, bsNPV + skew*q3 + kurt*q4, df)),
         // Moment matching based on
         // Rubinstein M., (1998), “Edgeworth Binomial Trees”,
         // Journal of Derivatives 5 (3), 20-27.
-        square<Real>()(blackFormulaImpliedStdDev(
+        squared(blackFormulaImpliedStdDev(
             Option::Call, strike, fwd,
             bsNPV + skew*q3 + kurt*q4 + skew*skew*q5, df)),
         // implied vol as control variate
-        square<Real>()(implStdDev),
+        squared(implStdDev),
         // remaining function becomes zero for u -> 0
         -8.0*std::log(engine->chF(std::complex<Real>(0, -0.5), maturity).real())
     };
@@ -2326,10 +2269,8 @@ void HestonModelTest::testAndersenPiterbargControlVariateIntegrand() {
     }
 }
 
-void HestonModelTest::testAndersenPiterbargConvergence() {
+BOOST_AUTO_TEST_CASE(testAndersenPiterbargConvergence) {
     BOOST_TEST_MESSAGE("Testing Andersen-Piterbarg pricing convergence...");
-
-    SavedSettings backup;
 
     const Date settlementDate(5, July, 2002);
     Settings::instance().evaluationDate() = settlementDate;
@@ -2379,12 +2320,9 @@ void HestonModelTest::testAndersenPiterbargConvergence() {
     }
 }
 
-
-void HestonModelTest::testPiecewiseTimeDependentChFvsHestonChF() {
+BOOST_AUTO_TEST_CASE(testPiecewiseTimeDependentChFvsHestonChF) {
     BOOST_TEST_MESSAGE("Testing piecewise time dependent "
                        "ChF vs Heston ChF...");
-
-    SavedSettings backup;
 
     const Date settlementDate(5, July, 2017);
     Settings::instance().evaluationDate() = settlementDate;
@@ -2420,7 +2358,7 @@ void HestonModelTest::testPiecewiseTimeDependentChFvsHestonChF() {
                 TimeGrid(dayCounter.yearFraction(settlementDate, maturityDate),
                          10))));
 
-    const Real tol = 100*QL_EPSILON;
+    constexpr double tol = 100 * QL_EPSILON;
     for (Real r = 0.1; r < 4; r+=0.25) {
         for (Real phi = 0; phi < 360; phi+=60) {
             for (Time t=0.1; t <= 1.0; t+=0.3) {
@@ -2440,12 +2378,9 @@ void HestonModelTest::testPiecewiseTimeDependentChFvsHestonChF() {
     }
 }
 
-
-void HestonModelTest::testPiecewiseTimeDependentComparison() {
+BOOST_AUTO_TEST_CASE(testPiecewiseTimeDependentComparison) {
     BOOST_TEST_MESSAGE("Testing piecewise time dependent "
                        "ChF vs Heston ChF...");
-
-    SavedSettings backup;
 
     const Date settlementDate(5, July, 2017);
     Settings::instance().evaluationDate() = settlementDate;
@@ -2577,11 +2512,9 @@ void HestonModelTest::testPiecewiseTimeDependentComparison() {
                 << std::fabs(calculatedGatheral - calculatedMC));
 }
 
-void HestonModelTest::testPiecewiseTimeDependentChFAsymtotic() {
+BOOST_AUTO_TEST_CASE(testPiecewiseTimeDependentChFAsymtotic) {
     BOOST_TEST_MESSAGE("Testing piecewise time dependent "
                        "ChF vs Heston ChF...");
-
-    SavedSettings backup;
 
     const Date settlementDate(5, July, 2017);
     Settings::instance().evaluationDate() = settlementDate;
@@ -2710,11 +2643,9 @@ void HestonModelTest::testPiecewiseTimeDependentChFAsymtotic() {
     }
 }
 
-void HestonModelTest::testSmallSigmaExpansion() {
+BOOST_AUTO_TEST_CASE(testSmallSigmaExpansion) {
     BOOST_TEST_MESSAGE("Testing small sigma expansion of "
                        "the characteristic function...");
-
-    SavedSettings backup;
 
     const Date settlementDate(20, March, 2020);
     Settings::instance().evaluationDate() = settlementDate;
@@ -2788,11 +2719,9 @@ void HestonModelTest::testSmallSigmaExpansion() {
     }
 }
 
-void HestonModelTest::testSmallSigmaExpansion4ExpFitting() {
+BOOST_AUTO_TEST_CASE(testSmallSigmaExpansion4ExpFitting) {
     BOOST_TEST_MESSAGE("Testing small sigma expansion for the "
                        "exponential fitting Heston engine...");
-
-    SavedSettings backup;
 
     const Date todaysDate(13, March, 2020);
     Settings::instance().evaluationDate() = todaysDate;
@@ -2865,9 +2794,9 @@ void HestonModelTest::testSmallSigmaExpansion4ExpFitting() {
 
         Option::Type optionType = Option::Call;
 
-        for (double kappa : kappas) {
-            for (double theta : thetas) {
-                for (double v0 : v0s) {
+        for (Real kappa : kappas) {
+            for (Real theta : thetas) {
+                for (Real v0 : v0s) {
                     const ext::shared_ptr<PricingEngine> engine =
                         ext::make_shared<ExponentialFittingHestonEngine>(
                             ext::make_shared<HestonModel>(ext::make_shared<HestonProcess>(
@@ -2908,11 +2837,9 @@ void HestonModelTest::testSmallSigmaExpansion4ExpFitting() {
     }
 }
 
-void HestonModelTest::testExponentialFitting4StrikesAndMaturities() {
+BOOST_AUTO_TEST_CASE(testExponentialFitting4StrikesAndMaturities) {
     BOOST_TEST_MESSAGE("Testing exponential fitting Heston engine "
                        "with high precision results for large moneyness...");
-
-    SavedSettings backup;
 
     const Date todaysDate = Date(13, May, 2020);
     Settings::instance().evaluationDate() = todaysDate;
@@ -3051,37 +2978,18 @@ void HestonModelTest::testExponentialFitting4StrikesAndMaturities() {
     }
 }
 
-namespace {
-    class HestonIntegrationMaxBoundTestFct {
-      public:
-        explicit HestonIntegrationMaxBoundTestFct(Real maxBound)
-        : maxBound_(maxBound),
-          callCounter_(ext::make_shared<Size>(Size(0))) {}
-
-        Real operator()() {
-            ++(*callCounter_);
-            return maxBound_;
-        }
-
-        Size getCallCounter() const {
-            return *callCounter_;
-        }
-      private:
-        const Real maxBound_;
-        const ext::shared_ptr<Size> callCounter_;
-    };
-}
-
-void HestonModelTest::testHestonEngineIntegration() {
+BOOST_AUTO_TEST_CASE(testHestonEngineIntegration) {
     BOOST_TEST_MESSAGE("Testing Heston engine integration signature...");
+
+    auto square = [](Real x) -> Real { return x * x; };
 
     const AnalyticHestonEngine::Integration integration =
         AnalyticHestonEngine::Integration::gaussLobatto(1e-12, 1e-12);
 
-    const Real c1 = integration.calculate(1.0, square<Real>(), 1.0);
+    const Real c1 = integration.calculate(1.0, square, Real(1.0));
 
     HestonIntegrationMaxBoundTestFct testFct(1.0);
-    const Real c2 = integration.calculate(1.0, square<Real>(), testFct);
+    const Real c2 = integration.calculate(1.0, square, testFct);
 
     if (testFct.getCallCounter() == 0 ||
             std::fabs(c1 - 1/3.) > 1e-10 || std::fabs(c2 - 1/3.) > 1e-10) {
@@ -3089,8 +2997,7 @@ void HestonModelTest::testHestonEngineIntegration() {
     }
 }
 
-
-void HestonModelTest::testOptimalControlVariateChoice() {
+BOOST_AUTO_TEST_CASE(testOptimalControlVariateChoice) {
     BOOST_TEST_MESSAGE(
         "Testing optimal control variate choice for the Heston model...");
 
@@ -3123,10 +3030,8 @@ void HestonModelTest::testOptimalControlVariateChoice() {
 
 }
 
-void HestonModelTest::testAsymptoticControlVariate() {
+BOOST_AUTO_TEST_CASE(testAsymptoticControlVariate) {
     BOOST_TEST_MESSAGE("Testing Heston asymptotic control variate...");
-
-    SavedSettings backup;
 
     const Date todaysDate = Date(4, August, 2020);
     Settings::instance().evaluationDate() = todaysDate;
@@ -3220,53 +3125,206 @@ void HestonModelTest::testAsymptoticControlVariate() {
     }
 }
 
+BOOST_AUTO_TEST_CASE(testLocalVolFromHestonModel) {
+    BOOST_TEST_MESSAGE("Testing Local Volatility pricing from Heston Model...");
 
-test_suite* HestonModelTest::suite(SpeedLevel speed) {
-    auto* suite = BOOST_TEST_SUITE("Heston model tests");
+    const auto todaysDate = Date(28, June, 2021);
+    Settings::instance().evaluationDate() = todaysDate;
 
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testBlackCalibration));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testDAXCalibration));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testAnalyticVsBlack));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testAnalyticVsCached));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testMultipleStrikesEngine));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testMcVsCached));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testAnalyticPiecewiseTimeDependent));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testDAXCalibrationOfTimeDependentModel));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testAlanLewisReferencePrices));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testExpansionOnAlanLewisReference));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testExpansionOnFordeReference));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testAllIntegrationMethods));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testCosHestonCumulants));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testCosHestonEngine));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testCharacteristicFct));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testAndersenPiterbargPricing));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testAndersenPiterbargControlVariateIntegrand));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testAndersenPiterbargConvergence));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testPiecewiseTimeDependentChFvsHestonChF));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testPiecewiseTimeDependentComparison));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testPiecewiseTimeDependentChFAsymtotic));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testSmallSigmaExpansion));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testSmallSigmaExpansion4ExpFitting));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testExponentialFitting4StrikesAndMaturities));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testHestonEngineIntegration));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testOptimalControlVariateChoice));
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testAsymptoticControlVariate));
+    const auto dc = Actual365Fixed();
 
-    if (speed <= Fast) {
-        suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testDifferentIntegrals));
-        suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testFdBarrierVsCached));
-        suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testFdVanillaVsCached));
+    const Handle<YieldTermStructure> rTS(
+        ext::make_shared<ZeroCurve>(
+            std::vector<Date>{
+                todaysDate, todaysDate + Period(90, Days),
+                todaysDate + Period(180, Days), todaysDate + Period(1, Years)
+            },
+            std::vector<Rate>{0.075, 0.05, 0.075, 0.1},
+            dc
+        )
+    );
+
+    const Handle<YieldTermStructure> qTS(
+        ext::make_shared<ZeroCurve>(
+            std::vector<Date>{
+                todaysDate, todaysDate + Period(90, Days), todaysDate + Period(1, Years)
+            },
+            std::vector<Rate>{0.06, 0.04, 0.12},
+            dc
+        )
+    );
+
+    const Handle<Quote> s0(ext::make_shared<SimpleQuote>(100.0));
+
+    const Real v0    =  0.1;
+    const Real rho   = -0.75;
+    const Real sigma =  0.8;
+    const Real kappa =  1.0;
+    const Real theta =  0.16;
+
+    const auto hestonModel = ext::make_shared<HestonModel>(
+        ext::make_shared<HestonProcess>(
+            rTS, qTS, s0, v0, kappa, theta, sigma, rho)
+    );
+
+    VanillaOption option(
+        ext::make_shared<PlainVanillaPayoff>(Option::Call, 120.0),
+        ext::make_shared<EuropeanExercise>(todaysDate + Period(1, Years))
+    );
+
+    option.setPricingEngine(
+        ext::make_shared<AnalyticHestonEngine>(
+            hestonModel,
+            AnalyticHestonEngine::OptimalCV,
+            AnalyticHestonEngine::Integration::gaussLaguerre(192)
+        )
+    );
+
+    const Real expected = option.NPV();
+
+    option.setPricingEngine(
+         ext::make_shared<FdBlackScholesVanillaEngine>(
+             ext::make_shared<BlackScholesMertonProcess>(
+                 s0, qTS, rTS,
+                 Handle<BlackVolTermStructure>(
+                      ext::make_shared<HestonBlackVolSurface>(
+                          Handle<HestonModel>(hestonModel),
+                          AnalyticHestonEngine::OptimalCV,
+                          AnalyticHestonEngine::Integration::gaussLaguerre(24)
+                      )
+                 )
+             ),
+             25, 125, 1, FdmSchemeDesc::Douglas(), true, 0.4
+         )
+    );
+
+    const Real calculated = option.NPV();
+
+    const Real tol = 0.002;
+    const Real diff = std::fabs(calculated - expected);
+    if (diff > tol) {
+        BOOST_ERROR("failed to reproduce Heston model values with "
+                    "local volatility pricing"
+                << "\n  calculated: " << calculated
+                << "\n  expected  : " << expected
+                << "\n  difference: " << diff
+                << "\n  tolerance : " << tol);
     }
-
-    if (speed == Slow) {
-        suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testKahlJaeckelCase));
-    }
-
-    return suite;
 }
 
-test_suite* HestonModelTest::experimental() {
-    auto* suite = BOOST_TEST_SUITE("Heston model experimental tests");
-    suite->add(QUANTLIB_TEST_CASE(&HestonModelTest::testAnalyticPDFHestonEngine));
-    return suite;
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(HestonModelExperimentalTest)
+
+BOOST_AUTO_TEST_CASE(testAnalyticPDFHestonEngine) {
+    BOOST_TEST_MESSAGE("Testing analytic PDF Heston engine...");
+
+    const Date settlementDate(5, January, 2014);
+    Settings::instance().evaluationDate() = settlementDate;
+
+    const DayCounter dayCounter = Actual365Fixed();
+    const Handle<YieldTermStructure> riskFreeTS(flatRate(0.07, dayCounter));
+    const Handle<YieldTermStructure> dividendTS(flatRate(0.185, dayCounter));
+
+    const Handle<Quote> s0(ext::make_shared<SimpleQuote>(100.0));
+
+    const Real v0    =  0.1;
+    const Real rho   = -0.5;
+    const Real sigma =  1.0;
+    const Real kappa =  4.0;
+    const Real theta =  0.05;
+
+    const ext::shared_ptr<HestonModel> model(
+        ext::make_shared<HestonModel>(
+            ext::make_shared<HestonProcess>(riskFreeTS, dividendTS,
+                                            s0, v0, kappa, theta, sigma, rho)));
+
+    const Real tol = 1e-6;
+    const ext::shared_ptr<AnalyticPDFHestonEngine> pdfEngine(
+        ext::make_shared<AnalyticPDFHestonEngine>(model, tol));
+
+    const ext::shared_ptr<PricingEngine> analyticEngine(
+        ext::make_shared<AnalyticHestonEngine>(model, 178));
+
+    const Date maturityDate(5, July, 2014);
+    const Time maturity = dayCounter.yearFraction(settlementDate, maturityDate);
+    const ext::shared_ptr<Exercise> exercise(
+        ext::make_shared<EuropeanExercise>(maturityDate));
+
+    // 1. check a plain vanilla call option
+    for (Real strike=40; strike < 190; strike+=20) {
+        const ext::shared_ptr<StrikedTypePayoff> vanillaPayoff(
+            ext::make_shared<PlainVanillaPayoff>(Option::Call, strike));
+
+        VanillaOption planVanillaOption(vanillaPayoff, exercise);
+
+        planVanillaOption.setPricingEngine(pdfEngine);
+        const Real calculated = planVanillaOption.NPV();
+
+        planVanillaOption.setPricingEngine(analyticEngine);
+        const Real expected = planVanillaOption.NPV();
+
+        if (std::fabs(calculated-expected) > 3*tol) {
+            BOOST_FAIL(
+                "failed to reproduce plain vanilla european prices with"
+                " the analytic probability density engine"
+                << "\n    strike     : " << strike
+                << "\n    expected   : " << expected
+                << "\n    calculated : " << calculated
+                << "\n    diff       : " << std::fabs(calculated-expected)
+                << "\n    tol        ; " << tol);
+        }
+    }
+
+    // 2. digital call option (approx. with a call spread)
+    for (Real strike=40; strike < 190; strike+=10) {
+        VanillaOption digitalOption(
+            ext::make_shared<CashOrNothingPayoff>(Option::Call, strike, 1.0),
+            exercise);
+        digitalOption.setPricingEngine(pdfEngine);
+        const Real calculated = digitalOption.NPV();
+
+        const Real eps = 0.01;
+        VanillaOption longCall(
+            ext::make_shared<PlainVanillaPayoff>(Option::Call, strike-eps),
+            exercise);
+        longCall.setPricingEngine(analyticEngine);
+
+        VanillaOption shortCall(
+            ext::make_shared<PlainVanillaPayoff>(Option::Call, strike+eps),
+            exercise);
+        shortCall.setPricingEngine(analyticEngine);
+
+        const Real expected = (longCall.NPV() - shortCall.NPV())/(2*eps);
+        if (std::fabs(calculated-expected) > tol) {
+            BOOST_FAIL(
+                "failed to reproduce european digital prices with"
+                " the analytic probability density engine"
+                << "\n    strike     : " << strike
+                << "\n    expected   : " << expected
+                << "\n    calculated : " << calculated
+                << "\n    diff       : " << std::fabs(calculated-expected)
+                << "\n    tol        : " << tol);
+        }
+
+        const DiscountFactor d = riskFreeTS->discount(maturityDate);
+        const Real expectedCDF = 1.0 - expected/d;
+        const Real calculatedCDF = pdfEngine->cdf(strike, maturity);
+
+        if (std::fabs(expectedCDF - calculatedCDF) > tol) {
+            BOOST_FAIL(
+                "failed to reproduce cumulative distribution function"
+                << "\n    strike        : " << strike
+                << "\n    expected CDF  : " << expectedCDF
+                << "\n    calculated CDF: " << calculatedCDF
+                << "\n    diff          : "
+                << std::fabs(calculatedCDF-expectedCDF)
+                << "\n    tol           : " << tol);
+
+        }
+    }
 }
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()

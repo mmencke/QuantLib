@@ -29,28 +29,31 @@
 
 namespace QuantLib {
 
-    //! default choice for finite-difference model
+    /*! \deprecated Define your typedef if needed.
+                    Deprecated in version 1.32.
+    */
+    [[deprecated("Define your typedef if needed")]]
     typedef FiniteDifferenceModel<
                     CrankNicolson<TridiagonalOperator>  >
                                   StandardFiniteDifferenceModel;
 
-    //! default choice for parallel finite-difference model
+    QL_DEPRECATED_DISABLE_WARNING
+
+    /*! \deprecated Define your typedef if needed.
+                    Deprecated in version 1.32.
+    */
+    [[deprecated("Define your typedef if needed")]]
     typedef FiniteDifferenceModel<ParallelEvolver<
                     CrankNicolson<TridiagonalOperator> > >
                                   StandardSystemFiniteDifferenceModel;
 
-    //! default choice for step condition
-    typedef StepCondition<Array> StandardStepCondition;
-
-    QL_DEPRECATED_DISABLE_WARNING
-
-    /*! \deprecated Inherit from StandardStepCondition directly.
-                    Deprecated in version 1.19.
-    */
-    QL_DEPRECATED
-    typedef CurveDependentStepCondition<Array> StandardCurveDependentStepCondition;
-
     QL_DEPRECATED_ENABLE_WARNING
+
+    /*! \deprecated Define your typedef if needed.
+                    Deprecated in version 1.32.
+    */
+    [[deprecated("Define your typedef if needed")]]
+    typedef StepCondition<Array> StandardStepCondition;
 
 }
 

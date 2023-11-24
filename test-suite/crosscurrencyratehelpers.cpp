@@ -16,11 +16,13 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "crosscurrencyratehelpers.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/experimental/termstructures/crosscurrencyratehelpers.hpp>
 #include <ql/indexes/ibor/euribor.hpp>
 #include <ql/indexes/ibor/usdlibor.hpp>
+#include <ql/cashflows/iborcoupon.hpp>
+#include <ql/cashflows/simplecashflow.hpp>
 #include <ql/math/interpolations/loginterpolation.hpp>
 #include <ql/pricingengines/swap/discountingswapengine.hpp>
 #include <ql/termstructures/yield/flatforward.hpp>
@@ -61,8 +63,6 @@ namespace crosscurrencyratehelpers_test {
 
         std::vector<XccyTestDatum> basisData;
 
-        // cleanup
-        SavedSettings backup;
         // utilities
 
         ext::shared_ptr<RateHelper>
@@ -72,11 +72,10 @@ namespace crosscurrencyratehelpers_test {
                                        bool isBasisOnFxBaseCurrencyLeg) const {
             Handle<Quote> quoteHandle(ext::make_shared<SimpleQuote>(q.basis * basisPoint));
             Period tenor(q.n, q.units);
-            return ext::shared_ptr<CrossCurrencyBasisSwapRateHelper>(
-                new CrossCurrencyBasisSwapRateHelper(
-                    quoteHandle, tenor, settlementDays, calendar, businessConvention, endOfMonth,
-                    baseCcyIdx, quoteCcyIdx, collateralHandle, isFxBaseCurrencyCollateralCurrency,
-                    isBasisOnFxBaseCurrencyLeg));
+            return ext::shared_ptr<RateHelper>(new ConstNotionalCrossCurrencyBasisSwapRateHelper(
+                quoteHandle, tenor, settlementDays, calendar, businessConvention, endOfMonth,
+                baseCcyIdx, quoteCcyIdx, collateralHandle, isFxBaseCurrencyCollateralCurrency,
+                isBasisOnFxBaseCurrencyLeg));
         }
 
         std::vector<ext::shared_ptr<RateHelper> >
@@ -95,33 +94,83 @@ namespace crosscurrencyratehelpers_test {
             return instruments;
         }
 
+        ext::shared_ptr<RateHelper>
+        resettingXccyRateHelper(const XccyTestDatum& q,
+                                const Handle<YieldTermStructure>& collateralHandle,
+                                bool isFxBaseCurrencyCollateralCurrency,
+                                bool isBasisOnFxBaseCurrencyLeg,
+                                bool isFxBaseCurrencyLegResettable) const {
+            Handle<Quote> quoteHandle(ext::make_shared<SimpleQuote>(q.basis * basisPoint));
+            Period tenor(q.n, q.units);
+            return ext::shared_ptr<RateHelper>(new MtMCrossCurrencyBasisSwapRateHelper(
+                quoteHandle, tenor, settlementDays, calendar, businessConvention, endOfMonth,
+                baseCcyIdx, quoteCcyIdx, collateralHandle, isFxBaseCurrencyCollateralCurrency,
+                isBasisOnFxBaseCurrencyLeg, isFxBaseCurrencyLegResettable));
+        }
+
+        std::vector<ext::shared_ptr<RateHelper> >
+        buildResettingXccyRateHelpers(const std::vector<XccyTestDatum>& xccyData,
+                                       const Handle<YieldTermStructure>& collateralHandle,
+                                       bool isFxBaseCurrencyCollateralCurrency,
+                                       bool isBasisOnFxBaseCurrencyLeg,
+                                       bool isFxBaseCurrencyLegResettable) const {
+            std::vector<ext::shared_ptr<RateHelper> > instruments;
+            instruments.reserve(xccyData.size());
+            for (const auto& i : xccyData) {
+                instruments.push_back(resettingXccyRateHelper(
+                    i, collateralHandle, isFxBaseCurrencyCollateralCurrency,
+                    isBasisOnFxBaseCurrencyLeg, isFxBaseCurrencyLegResettable));
+            }
+
+            return instruments;
+        }
+
+        Schedule legSchedule(const Period& tenor, 
+                             const ext::shared_ptr<IborIndex>& idx) const {
+            return MakeSchedule()
+                .from(settlement)
+                .to(settlement + tenor)
+                .withTenor(idx->tenor())
+                .withCalendar(calendar)
+                .withConvention(businessConvention)
+                .endOfMonth(endOfMonth)
+                .backwards();
+        }
+
+        Leg constantNotionalLeg(const Schedule& schedule,
+                                const ext::shared_ptr<IborIndex>& idx,
+                                Real notional,
+                                Spread basis) const {
+            Leg leg = IborLeg(schedule, idx).withNotionals(notional).withSpreads(basis);
+            Date lastPaymentDate = leg.back()->date();
+            leg.push_back(ext::make_shared<SimpleCashFlow>(notional, lastPaymentDate));
+            return leg;
+        }
+
         std::vector<ext::shared_ptr<Swap> >
-        buildXccyBasisSwap(const Date& start,
-                           const XccyTestDatum& q,
+        buildXccyBasisSwap(const XccyTestDatum& q,
                            Real fxSpot,
                            bool isFxBaseCurrencyCollateralCurrency,
                            bool isBasisOnFxBaseCurrencyLeg) const {
             const Real baseCcyLegNotional = 1.0;
             Real quoteCcyLegNotional = baseCcyLegNotional * fxSpot;
 
-            Spread baseCcyLegBasis = isBasisOnFxBaseCurrencyLeg ? q.basis * basisPoint : 0.0;
-            Spread quoteCcyLegBasis = isBasisOnFxBaseCurrencyLeg ? 0.0 : q.basis * basisPoint;
+            Spread baseCcyLegBasis = isBasisOnFxBaseCurrencyLeg ? Real(q.basis * basisPoint) : 0.0;
+            Spread quoteCcyLegBasis = isBasisOnFxBaseCurrencyLeg ? 0.0 : Real(q.basis * basisPoint);
 
             std::vector<ext::shared_ptr<Swap> > legs;
-            ext::shared_ptr<Swap> baseCcyLeg =
-                CrossCurrencyBasisSwapRateHelper::buildCrossCurrencyLeg(
-                    start, Period(q.n, q.units), settlementDays, calendar, businessConvention,
-                    endOfMonth, baseCcyIdx, VanillaSwap::Receiver, baseCcyLegNotional,
-                    baseCcyLegBasis);
-            legs.push_back(baseCcyLeg);
+            bool payer = true;
 
-            ext::shared_ptr<Swap> quoteCcyLeg =
-                CrossCurrencyBasisSwapRateHelper::buildCrossCurrencyLeg(
-                    start, Period(q.n, q.units), settlementDays, calendar, businessConvention,
-                    endOfMonth, quoteCcyIdx, VanillaSwap::Payer, quoteCcyLegNotional,
-                    quoteCcyLegBasis);
-            legs.push_back(quoteCcyLeg);
+            Leg baseCcyLeg = constantNotionalLeg(legSchedule(Period(q.n, q.units), baseCcyIdx),
+                                                 baseCcyIdx, baseCcyLegNotional, baseCcyLegBasis);
+            legs.push_back(ext::make_shared<Swap>(std::vector<Leg>(1, baseCcyLeg),
+                                                  std::vector<bool>(1, !payer)));
 
+            Leg quoteCcyLeg =
+                constantNotionalLeg(legSchedule(Period(q.n, q.units), quoteCcyIdx), quoteCcyIdx,
+                                    quoteCcyLegNotional, quoteCcyLegBasis);
+            legs.push_back(ext::make_shared<Swap>(std::vector<Leg>(1, quoteCcyLeg),
+                                                  std::vector<bool>(1, payer)));
             return legs;
         }
 
@@ -196,9 +245,8 @@ void testConstantNotionalCrossCurrencySwapsNPV(bool isFxBaseCurrencyCollateralCu
     for (Size i = 0; i < vars.basisData.size(); ++i) {
 
         XccyTestDatum quote = vars.basisData[i];
-        std::vector<ext::shared_ptr<Swap> > xccySwapProxy =
-            vars.buildXccyBasisSwap(vars.today, quote, vars.fxSpot,
-                                    isFxBaseCurrencyCollateralCurrency, isBasisOnFxBaseCurrencyLeg);
+        std::vector<ext::shared_ptr<Swap> > xccySwapProxy = vars.buildXccyBasisSwap(
+            quote, vars.fxSpot, isFxBaseCurrencyCollateralCurrency, isBasisOnFxBaseCurrencyLeg);
 
         if (isFxBaseCurrencyCollateralCurrency) {
             xccySwapProxy[0]->setPricingEngine(collateralCcyLegEngine);
@@ -223,9 +271,65 @@ void testConstantNotionalCrossCurrencySwapsNPV(bool isFxBaseCurrencyCollateralCu
     }
 }
 
+void testResettingCrossCurrencySwaps(bool isFxBaseCurrencyCollateralCurrency,
+                                     bool isBasisOnFxBaseCurrencyLeg,
+                                     bool isFxBaseCurrencyLegResettable) {
 
-void CrossCurrencyRateHelpersTest::testBasisSwapsWithCollateralInQuoteAndBasisInBaseCcy() {
-    BOOST_TEST_MESSAGE("Testing basis swaps instruments with collateral in quote ccy and basis in base ccy...");
+    using namespace crosscurrencyratehelpers_test;
+
+    CommonVars vars;
+
+    Handle<YieldTermStructure> collateralHandle =
+        isFxBaseCurrencyCollateralCurrency ? vars.baseCcyIdxHandle : vars.quoteCcyIdxHandle;
+
+    std::vector<ext::shared_ptr<RateHelper> > resettingInstruments =
+        vars.buildResettingXccyRateHelpers(
+            vars.basisData, collateralHandle, isFxBaseCurrencyCollateralCurrency,
+            isBasisOnFxBaseCurrencyLeg, isFxBaseCurrencyLegResettable);
+    
+    std::vector<ext::shared_ptr<RateHelper> > constNotionalInstruments =
+        vars.buildConstantNotionalXccyRateHelpers(vars.basisData, collateralHandle,
+                                                  isFxBaseCurrencyCollateralCurrency,
+                                                  isBasisOnFxBaseCurrencyLeg);
+
+    ext::shared_ptr<YieldTermStructure> resettingCurve(
+        new PiecewiseYieldCurve<Discount, LogLinear>(vars.settlement, resettingInstruments, vars.dayCount));
+    resettingCurve->enableExtrapolation();
+
+    ext::shared_ptr<YieldTermStructure> constNotionalCurve(
+        new PiecewiseYieldCurve<Discount, LogLinear>(vars.settlement, constNotionalInstruments,
+                                                     vars.dayCount));
+    constNotionalCurve->enableExtrapolation();
+
+    Real tolerance = 1.0e-4 * 5;
+    Size numberOfInstruments = vars.basisData.size();
+
+    for (Size i = 0; i < numberOfInstruments; ++i) {
+
+        Date maturity = resettingInstruments[i]->maturityDate();
+        Rate resettingZero = resettingCurve->zeroRate(maturity, vars.dayCount, Continuous);
+        Rate constNotionalZero = constNotionalCurve->zeroRate(maturity, vars.dayCount, Continuous);
+
+        // The difference between resetting and constant notional curves
+        // is not expected to be substantial. With the current setup it should
+        // amount to only a few basis points - hence the tolerance level was
+        // set at 5 bps.
+        if (std::fabs(resettingZero - constNotionalZero) > tolerance)
+            BOOST_ERROR("too large difference between resetting and constant notional curve \n"
+                        << std::setprecision(5)
+                        << "    zero from resetting curve:    " << resettingZero << "\n"
+                        << "    zero from const notional curve:    " << constNotionalZero << "\n"
+                        << "    maturity:    " << maturity << "\n");
+    }
+}
+
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(CrossCurrencyRateHelpersTest)
+
+BOOST_AUTO_TEST_CASE(testConstNotionalBasisSwapsWithCollateralInQuoteAndBasisInBaseCcy) {
+    BOOST_TEST_MESSAGE("Testing constant notional basis swaps with collateral in quote ccy and "
+                       "basis in base ccy...");
 
     bool isFxBaseCurrencyCollateralCurrency = false;
     bool isBasisOnFxBaseCurrencyLeg = true;
@@ -234,9 +338,9 @@ void CrossCurrencyRateHelpersTest::testBasisSwapsWithCollateralInQuoteAndBasisIn
                                               isBasisOnFxBaseCurrencyLeg);
 }
 
-void CrossCurrencyRateHelpersTest::testBasisSwapsWithCollateralInBaseAndBasisInQuoteCcy() {
+BOOST_AUTO_TEST_CASE(testConstNotionalBasisSwapsWithCollateralInBaseAndBasisInQuoteCcy) {
     BOOST_TEST_MESSAGE(
-        "Testing basis swaps instruments with collateral in base ccy and basis in quote ccy...");
+        "Testing constant notional basis swaps with collateral in base ccy and basis in quote ccy...");
 
     bool isFxBaseCurrencyCollateralCurrency = true;
     bool isBasisOnFxBaseCurrencyLeg = false;
@@ -245,9 +349,9 @@ void CrossCurrencyRateHelpersTest::testBasisSwapsWithCollateralInBaseAndBasisInQ
                                               isBasisOnFxBaseCurrencyLeg);
 }
 
-void CrossCurrencyRateHelpersTest::testBasisSwapsWithCollateralAndBasisInBaseCcy() {
+BOOST_AUTO_TEST_CASE(testConstNotionalBasisSwapsWithCollateralAndBasisInBaseCcy) {
     BOOST_TEST_MESSAGE(
-        "Testing basis swaps instruments with collateral and basis in base ccy...");
+        "Testing constant notional basis swaps with collateral and basis in base ccy...");
 
     bool isFxBaseCurrencyCollateralCurrency = true;
     bool isBasisOnFxBaseCurrencyLeg = true;
@@ -256,8 +360,8 @@ void CrossCurrencyRateHelpersTest::testBasisSwapsWithCollateralAndBasisInBaseCcy
                                               isBasisOnFxBaseCurrencyLeg);
 }
 
-void CrossCurrencyRateHelpersTest::testBasisSwapsWithCollateralAndBasisInQuoteCcy() {
-    BOOST_TEST_MESSAGE("Testing basis swaps instruments with collateral and basis in quote ccy...");
+BOOST_AUTO_TEST_CASE(testConstNotionalBasisSwapsWithCollateralAndBasisInQuoteCcy) {
+    BOOST_TEST_MESSAGE("Testing constant notional basis swaps with collateral and basis in quote ccy...");
 
     bool isFxBaseCurrencyCollateralCurrency = false;
     bool isBasisOnFxBaseCurrencyLeg = false;
@@ -266,16 +370,69 @@ void CrossCurrencyRateHelpersTest::testBasisSwapsWithCollateralAndBasisInQuoteCc
                                               isBasisOnFxBaseCurrencyLeg);
 }
 
-test_suite* CrossCurrencyRateHelpersTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Cross currency rate helpers tests");
+BOOST_AUTO_TEST_CASE(testResettingBasisSwapsWithCollateralInQuoteAndBasisInBaseCcy) {
+    BOOST_TEST_MESSAGE(
+        "Testing resetting basis swaps with collateral in quote ccy and basis in base ccy...");
 
-    suite->add(QUANTLIB_TEST_CASE(
-        &CrossCurrencyRateHelpersTest::testBasisSwapsWithCollateralInQuoteAndBasisInBaseCcy));
-    suite->add(QUANTLIB_TEST_CASE(
-        &CrossCurrencyRateHelpersTest::testBasisSwapsWithCollateralInBaseAndBasisInQuoteCcy));
-    suite->add(QUANTLIB_TEST_CASE(
-        &CrossCurrencyRateHelpersTest::testBasisSwapsWithCollateralAndBasisInBaseCcy));
-    suite->add(QUANTLIB_TEST_CASE(
-        &CrossCurrencyRateHelpersTest::testBasisSwapsWithCollateralAndBasisInQuoteCcy));
-    return suite;
+    bool isFxBaseCurrencyCollateralCurrency = false;
+    bool isFxBaseCurrencyLegResettable = false;
+    bool isBasisOnFxBaseCurrencyLeg = true;
+
+    testResettingCrossCurrencySwaps(isFxBaseCurrencyCollateralCurrency, isBasisOnFxBaseCurrencyLeg,
+                                     isFxBaseCurrencyLegResettable);
 }
+
+BOOST_AUTO_TEST_CASE(testResettingBasisSwapsWithCollateralInBaseAndBasisInQuoteCcy) {
+    BOOST_TEST_MESSAGE(
+        "Testing resetting basis swaps with collateral in base ccy and basis in quote ccy...");
+
+    bool isFxBaseCurrencyCollateralCurrency = true;
+    bool isFxBaseCurrencyLegResettable = true;
+    bool isBasisOnFxBaseCurrencyLeg = false;
+
+    testResettingCrossCurrencySwaps(isFxBaseCurrencyCollateralCurrency, isBasisOnFxBaseCurrencyLeg,
+                                     isFxBaseCurrencyLegResettable);
+}
+
+BOOST_AUTO_TEST_CASE(testResettingBasisSwapsWithCollateralAndBasisInBaseCcy) {
+    BOOST_TEST_MESSAGE("Testing resetting basis swaps with collateral and basis in base ccy...");
+
+    bool isFxBaseCurrencyCollateralCurrency = true;
+    bool isFxBaseCurrencyLegResettable = true;
+    bool isBasisOnFxBaseCurrencyLeg = true;
+
+    testResettingCrossCurrencySwaps(isFxBaseCurrencyCollateralCurrency, isBasisOnFxBaseCurrencyLeg,
+                                     isFxBaseCurrencyLegResettable);
+}
+
+BOOST_AUTO_TEST_CASE(testResettingBasisSwapsWithCollateralAndBasisInQuoteCcy) {
+    BOOST_TEST_MESSAGE("Testing resetting basis swaps with collateral and basis in quote ccy...");
+
+    bool isFxBaseCurrencyCollateralCurrency = false;
+    bool isFxBaseCurrencyLegResettable = false;
+    bool isBasisOnFxBaseCurrencyLeg = false;
+
+    testResettingCrossCurrencySwaps(isFxBaseCurrencyCollateralCurrency, isBasisOnFxBaseCurrencyLeg,
+                                     isFxBaseCurrencyLegResettable);
+}
+
+BOOST_AUTO_TEST_CASE(testExceptionWhenInstrumentTenorShorterThanIndexFrequency) {
+    BOOST_TEST_MESSAGE(
+        "Testing exception when instrument tenor is shorter than index frequency...");
+
+    using namespace crosscurrencyratehelpers_test;
+
+    CommonVars vars;
+
+    std::vector<XccyTestDatum> data{{1, Months, 10.0}};
+    Handle<YieldTermStructure> collateralHandle;
+    
+    BOOST_CHECK_THROW(
+        std::vector<ext::shared_ptr<RateHelper> > resettingInstruments =
+            vars.buildConstantNotionalXccyRateHelpers(data, collateralHandle, true, true),
+        Error);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()

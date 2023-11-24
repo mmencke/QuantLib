@@ -45,8 +45,6 @@ namespace {
 void SofrFuturesTest::testBootstrap() {
     BOOST_TEST_MESSAGE("Testing bootstrap over SOFR futures...");
 
-    SavedSettings backup;
-
     Date today = Date(26, October, 2018);
     Settings::instance().evaluationDate() = today;
 
@@ -89,8 +87,7 @@ void SofrFuturesTest::testBootstrap() {
     std::vector<ext::shared_ptr<RateHelper> > helpers;
     for (const auto& sofrQuote : sofrQuotes) {
         helpers.push_back(ext::make_shared<SofrFutureRateHelper>(
-            sofrQuote.price, sofrQuote.month, sofrQuote.year, sofrQuote.freq,
-            index, 0.0, sofrQuote.averagingMethod));
+            sofrQuote.price, sofrQuote.month, sofrQuote.year, sofrQuote.freq));
     }
 
     ext::shared_ptr<PiecewiseYieldCurve<Discount, Linear> > curve =

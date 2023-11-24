@@ -48,23 +48,12 @@ namespace QuantLib {
         3. Choose position type = Short for an "FRA sale" (future short
            loan, long deposit [lender])
 
-        4. If strike is given in the constructor, can calculate the NPV
-           of the contract via NPV().
-
-        5. If forward rate is desired/unknown, it can be obtained via
-           forwardRate(). In this case, the strike variable in the
-           constructor is irrelevant and will be ignored.
-
         <b>Example: </b>
         \link FRA.cpp
         valuation of a forward-rate agreement
         \endlink
 
         \todo Add preconditions and tests
-
-        \todo Should put an instance of ForwardRateAgreement in the
-              FraRateHelper to ensure consistency with the piecewise
-              yield curve.
 
         \todo Differentiate between BBA (British)/AFB (French)
               [assumed here] and ABA (Australian) banker conventions
@@ -74,31 +63,76 @@ namespace QuantLib {
 
         \ingroup instruments
     */
-    class ForwardRateAgreement: public Forward {
+    class ForwardRateAgreement: public Instrument {
       public:
-        ForwardRateAgreement(const Date& valueDate,
-                             const Date& maturityDate,
-                             Position::Type type,
-                             Rate strikeForwardRate,
-                             Real notionalAmount,
-                             const ext::shared_ptr<IborIndex>& index,
-                             const Handle<YieldTermStructure>& discountCurve =
-                                                 Handle<YieldTermStructure>(),
-                             bool useIndexedCoupon = true);
+        /*! \deprecated Use one of the other constructors.
+                        Deprecated in version 1.31.
+        */
+        QL_DEPRECATED
+        ForwardRateAgreement(
+            const Date& valueDate,
+            const Date& maturityDate,
+            Position::Type type,
+            Rate strikeForwardRate,
+            Real notionalAmount,
+            const ext::shared_ptr<IborIndex>& index,
+            Handle<YieldTermStructure> discountCurve = {},
+            bool useIndexedCoupon = true);
+
+        /*! \deprecated Use one of the other constructors.
+                        Deprecated in version 1.31.
+        */
+        QL_DEPRECATED
+        ForwardRateAgreement(
+            const Date& valueDate,
+            Position::Type type,
+            Rate strikeForwardRate,
+            Real notionalAmount,
+            const ext::shared_ptr<IborIndex>& index,
+            Handle<YieldTermStructure> discountCurve = {});
+
+        /*! When using this constructor, the forward rate will be
+            forecast by the passed index.  This corresponds to
+            useIndexedCoupon=true in the FraRateHelper class.
+        */
+        ForwardRateAgreement(
+            const ext::shared_ptr<IborIndex>& index,
+            const Date& valueDate,
+            Position::Type type,
+            Rate strikeForwardRate,
+            Real notionalAmount,
+            Handle<YieldTermStructure> discountCurve = {});
+
+        /*! When using this constructor, a par-rate approximation will
+            be used, i.e., the forward rate will be forecast from
+            value date to maturity date by the forecast curve
+            contained in the index.  This corresponds to
+            useIndexedCoupon=false in the FraRateHelper class.
+        */
+        ForwardRateAgreement(
+            const ext::shared_ptr<IborIndex>& index,
+            const Date& valueDate,
+            const Date& maturityDate,
+            Position::Type type,
+            Rate strikeForwardRate,
+            Real notionalAmount,
+            Handle<YieldTermStructure> discountCurve = {});
+
         //! \name Calculations
         //@{
-        /*! A FRA expires/settles on the valueDate */
+        //! A FRA expires/settles on the value date
         bool isExpired() const override;
-        /*! This returns evaluationDate + settlementDays (not FRA
-            valueDate).
-        */
-        Date settlementDate() const override;
+        //! The payoff on the value date
+        Real amount() const;
+
+        const Calendar& calendar() const;
+        BusinessDayConvention businessDayConvention() const;
+        const DayCounter& dayCounter() const;
+        //! term structure relevant to the contract (e.g. repo curve)
+        Handle<YieldTermStructure> discountCurve() const;
+
         Date fixingDate() const;
-        /*!  Income is zero for a FRA */
-        Real spotIncome(const Handle<YieldTermStructure>& incomeDiscountCurve) const override;
-        //! Spot value (NPV) of the underlying loan
-        /*! This has always a positive value (asset), even if short the FRA */
-        Real spotValue() const override;
+
         //! Returns the relevant forward rate associated with the FRA term
         InterestRate forwardRate() const;
         //@}
@@ -115,12 +149,35 @@ namespace QuantLib {
         ext::shared_ptr<IborIndex> index_;
         bool useIndexedCoupon_;
 
+        DayCounter dayCounter_;
+        Calendar calendar_;
+        BusinessDayConvention businessDayConvention_;
+
+        //! the valueDate is the date the underlying index starts accruing and the FRA is settled.
+        Date valueDate_;
+        //! maturityDate of the underlying index; not the date the FRA is settled.
+        Date maturityDate_;
+        Handle<YieldTermStructure> discountCurve_;
+
       private:
         void calculateForwardRate() const;
+        void calculateAmount() const;
+        mutable Real amount_;
     };
+
+    inline const Calendar& ForwardRateAgreement::calendar() const { return calendar_; }
+
+    inline BusinessDayConvention ForwardRateAgreement::businessDayConvention() const {
+        return businessDayConvention_;
+    }
+
+    inline const DayCounter& ForwardRateAgreement::dayCounter() const { return dayCounter_; }
+
+    inline Handle<YieldTermStructure> ForwardRateAgreement::discountCurve() const {
+        return discountCurve_;
+    }
 
 }
 
 
 #endif
-

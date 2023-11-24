@@ -29,6 +29,7 @@
 #include <ql/math/array.hpp>
 #include <ql/utilities/steppingiterator.hpp>
 #include <initializer_list>
+#include <iterator>
 
 namespace QuantLib {
 
@@ -55,17 +56,15 @@ namespace QuantLib {
         template <class Iterator>
         Matrix(Size rows, Size columns, Iterator begin, Iterator end);
         Matrix(const Matrix&);
-        Matrix(Matrix&&) QL_NOEXCEPT;
-        #ifdef QL_USE_DISPOSABLE
-        Matrix(const Disposable<Matrix>&);
-        #endif
+        Matrix(Matrix&&) noexcept;
         Matrix(std::initializer_list<std::initializer_list<Real>>);
+        ~Matrix() = default;
 
         Matrix& operator=(const Matrix&);
-        Matrix& operator=(Matrix&&) QL_NOEXCEPT;
-        #ifdef QL_USE_DISPOSABLE
-        Matrix& operator=(const Disposable<Matrix>&);
-        #endif
+        Matrix& operator=(Matrix&&) noexcept;
+
+        bool operator==(const Matrix&) const;
+        bool operator!=(const Matrix&) const;
         //@}
 
         //! \name Algebraic operators
@@ -81,18 +80,18 @@ namespace QuantLib {
 
         typedef Real* iterator;
         typedef const Real* const_iterator;
-        typedef boost::reverse_iterator<iterator> reverse_iterator;
-        typedef boost::reverse_iterator<const_iterator> const_reverse_iterator;
+        typedef std::reverse_iterator<iterator> reverse_iterator;
+        typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
         typedef Real* row_iterator;
         typedef const Real* const_row_iterator;
-        typedef boost::reverse_iterator<row_iterator> reverse_row_iterator;
-        typedef boost::reverse_iterator<const_row_iterator>
+        typedef std::reverse_iterator<row_iterator> reverse_row_iterator;
+        typedef std::reverse_iterator<const_row_iterator>
                                                 const_reverse_row_iterator;
         typedef step_iterator<iterator> column_iterator;
         typedef step_iterator<const_iterator> const_column_iterator;
-        typedef boost::reverse_iterator<column_iterator>
+        typedef std::reverse_iterator<column_iterator>
                                                    reverse_column_iterator;
-        typedef boost::reverse_iterator<const_column_iterator>
+        typedef std::reverse_iterator<const_column_iterator>
                                              const_reverse_column_iterator;
         //! \name Iterator access
         //@{
@@ -128,7 +127,7 @@ namespace QuantLib {
         const_row_iterator at(Size) const;
         row_iterator operator[](Size);
         row_iterator at(Size);
-        Disposable<Array> diagonal() const;
+        Array diagonal() const;
         Real& operator()(Size i, Size j) const;
         //@}
 
@@ -143,7 +142,7 @@ namespace QuantLib {
 
         //! \name Utilities
         //@{
-        void swap(Matrix&);
+        void swap(Matrix&) noexcept;
         //@}
       private:
         std::unique_ptr<Real[]> data_;
@@ -153,47 +152,67 @@ namespace QuantLib {
     // algebraic operators
 
     /*! \relates Matrix */
-    Disposable<Matrix> operator+(const Matrix&, const Matrix&);
+    Matrix operator+(const Matrix&, const Matrix&);
     /*! \relates Matrix */
-    Disposable<Matrix> operator-(const Matrix&, const Matrix&);
+    Matrix operator+(const Matrix&, Matrix&&);
     /*! \relates Matrix */
-    Disposable<Matrix> operator*(const Matrix&, Real);
+    Matrix operator+(Matrix&&, const Matrix&);
     /*! \relates Matrix */
-    Disposable<Matrix> operator*(Real, const Matrix&);
+    Matrix operator+(Matrix&&, Matrix&&);
     /*! \relates Matrix */
-    Disposable<Matrix> operator/(const Matrix&, Real);
-
+    Matrix operator-(const Matrix&);
+    /*! \relates Matrix */
+    Matrix operator-(Matrix&&);
+    /*! \relates Matrix */
+    Matrix operator-(const Matrix&, const Matrix&);
+    /*! \relates Matrix */
+    Matrix operator-(const Matrix&, Matrix&&);
+    /*! \relates Matrix */
+    Matrix operator-(Matrix&&, const Matrix&);
+    /*! \relates Matrix */
+    Matrix operator-(Matrix&&, Matrix&&);
+    /*! \relates Matrix */
+    Matrix operator*(const Matrix&, Real);
+    /*! \relates Matrix */
+    Matrix operator*(Matrix&&, Real);
+    /*! \relates Matrix */
+    Matrix operator*(Real, const Matrix&);
+    /*! \relates Matrix */
+    Matrix operator*(Real, Matrix&&);
+    /*! \relates Matrix */
+    Matrix operator/(const Matrix&, Real);
+    /*! \relates Matrix */
+    Matrix operator/(Matrix&&, Real);
 
     // vectorial products
 
     /*! \relates Matrix */
-    Disposable<Array> operator*(const Array&, const Matrix&);
+    Array operator*(const Array&, const Matrix&);
     /*! \relates Matrix */
-    Disposable<Array> operator*(const Matrix&, const Array&);
+    Array operator*(const Matrix&, const Array&);
     /*! \relates Matrix */
-    Disposable<Matrix> operator*(const Matrix&, const Matrix&);
+    Matrix operator*(const Matrix&, const Matrix&);
 
     // misc. operations
 
     /*! \relates Matrix */
-    Disposable<Matrix> transpose(const Matrix&);
+    Matrix transpose(const Matrix&);
 
     /*! \relates Matrix */
-    Disposable<Matrix> outerProduct(const Array& v1, const Array& v2);
+    Matrix outerProduct(const Array& v1, const Array& v2);
 
     /*! \relates Matrix */
     template <class Iterator1, class Iterator2>
-    Disposable<Matrix>
-    outerProduct(Iterator1 v1begin, Iterator1 v1end, Iterator2 v2begin, Iterator2 v2end);
+    Matrix outerProduct(Iterator1 v1begin, Iterator1 v1end, Iterator2 v2begin, Iterator2 v2end);
 
     /*! \relates Matrix */
-    void swap(Matrix&, Matrix&);
+    void swap(Matrix&, Matrix&) noexcept;
 
     /*! \relates Matrix */
     std::ostream& operator<<(std::ostream&, const Matrix&);
 
     /*! \relates Matrix */
-    Disposable<Matrix> inverse(const Matrix& m);
+    Matrix inverse(const Matrix& m);
 
     /*! \relates Matrix */
     Real determinant(const Matrix& m);
@@ -228,17 +247,10 @@ namespace QuantLib {
         std::copy(from.begin(),from.end(),begin());
     }
 
-    inline Matrix::Matrix(Matrix&& from) QL_NOEXCEPT
+    inline Matrix::Matrix(Matrix&& from) noexcept
     : data_((Real*)nullptr) {
         swap(from);
     }
-
-    #ifdef QL_USE_DISPOSABLE
-    inline Matrix::Matrix(const Disposable<Matrix>& from)
-    : data_((Real*)(0)), rows_(0), columns_(0) {
-        swap(const_cast<Disposable<Matrix>&>(from));
-    }
-    #endif
 
     inline Matrix::Matrix(std::initializer_list<std::initializer_list<Real>> data)
     : data_(data.size() == 0 || data.begin()->size() == 0 ?
@@ -262,23 +274,24 @@ namespace QuantLib {
         return *this;
     }
 
-    inline Matrix& Matrix::operator=(Matrix&& from) QL_NOEXCEPT {
+    inline Matrix& Matrix::operator=(Matrix&& from) noexcept {
         swap(from);
         return *this;
     }
 
-    #ifdef QL_USE_DISPOSABLE
-    inline Matrix& Matrix::operator=(const Disposable<Matrix>& from) {
-        swap(const_cast<Disposable<Matrix>&>(from));
-        return *this;
+    inline bool Matrix::operator==(const Matrix& to) const {
+        return rows_ == to.rows_ && columns_ == to.columns_ &&
+               std::equal(begin(), end(), to.begin());
     }
-    #endif
 
-    inline void Matrix::swap(Matrix& from) {
-        using std::swap;
+    inline bool Matrix::operator!=(const Matrix& to) const { 
+        return !this->operator==(to); 
+    }
+
+    inline void Matrix::swap(Matrix& from) noexcept {
         data_.swap(from.data_);
-        swap(rows_,from.rows_);
-        swap(columns_,from.columns_);
+        std::swap(rows_, from.rows_);
+        std::swap(columns_, from.columns_);
     }
 
     inline const Matrix& Matrix::operator+=(const Matrix& m) {
@@ -287,8 +300,7 @@ namespace QuantLib {
                    m.rows_ << "x" << m.columns_ << ", " <<
                    rows_ << "x" << columns_ << ") cannot be "
                    "added");
-        std::transform(begin(),end(),m.begin(),
-                       begin(),std::plus<Real>());
+        std::transform(begin(), end(), m.begin(), begin(), std::plus<>());
         return *this;
     }
 
@@ -298,20 +310,17 @@ namespace QuantLib {
                    m.rows_ << "x" << m.columns_ << ", " <<
                    rows_ << "x" << columns_ << ") cannot be "
                    "subtracted");
-        std::transform(begin(),end(),m.begin(),begin(),
-                       std::minus<Real>());
+        std::transform(begin(), end(), m.begin(), begin(), std::minus<>());
         return *this;
     }
 
     inline const Matrix& Matrix::operator*=(Real x) {
-        std::transform(begin(),end(),begin(),
-                       multiply_by<Real>(x));
+        std::transform(begin(), end(), begin(), [=](Real y) -> Real { return y * x; });
         return *this;
     }
 
     inline const Matrix& Matrix::operator/=(Real x) {
-        std::transform(begin(),end(),begin(),
-                       divide_by<Real>(x));
+        std::transform(begin(),end(),begin(), [=](Real y) -> Real { return y / x; });
         return *this;
     }
 
@@ -480,7 +489,7 @@ namespace QuantLib {
         return row_begin(i);
     }
 
-    inline Disposable<Array> Matrix::diagonal() const {
+    inline Array Matrix::diagonal() const {
         Size arraySize = std::min<Size>(rows(), columns());
         Array tmp(arraySize);
         for(Size i = 0; i < arraySize; i++)
@@ -512,7 +521,7 @@ namespace QuantLib {
         return rows_ == 0 || columns_ == 0;
     }
 
-    inline Disposable<Matrix> operator+(const Matrix& m1, const Matrix& m2) {
+    inline Matrix operator+(const Matrix& m1, const Matrix& m2) {
         QL_REQUIRE(m1.rows() == m2.rows() &&
                    m1.columns() == m2.columns(),
                    "matrices with different sizes (" <<
@@ -520,12 +529,55 @@ namespace QuantLib {
                    m2.rows() << "x" << m2.columns() << ") cannot be "
                    "added");
         Matrix temp(m1.rows(),m1.columns());
-        std::transform(m1.begin(),m1.end(),m2.begin(),temp.begin(),
-                       std::plus<Real>());
+        std::transform(m1.begin(), m1.end(), m2.begin(), temp.begin(), std::plus<>());
         return temp;
     }
 
-    inline Disposable<Matrix> operator-(const Matrix& m1, const Matrix& m2) {
+    inline Matrix operator+(const Matrix& m1, Matrix&& m2) {
+        QL_REQUIRE(m1.rows() == m2.rows() &&
+                   m1.columns() == m2.columns(),
+                   "matrices with different sizes (" <<
+                   m1.rows() << "x" << m1.columns() << ", " <<
+                   m2.rows() << "x" << m2.columns() << ") cannot be "
+                   "added");
+        std::transform(m1.begin(), m1.end(), m2.begin(), m2.begin(), std::plus<>());
+        return std::move(m2);
+    }
+
+    inline Matrix operator+(Matrix&& m1, const Matrix& m2) {
+        QL_REQUIRE(m1.rows() == m2.rows() &&
+                   m1.columns() == m2.columns(),
+                   "matrices with different sizes (" <<
+                   m1.rows() << "x" << m1.columns() << ", " <<
+                   m2.rows() << "x" << m2.columns() << ") cannot be "
+                   "added");
+        std::transform(m1.begin(), m1.end(), m2.begin(), m1.begin(), std::plus<>());
+        return std::move(m1);
+    }
+
+    inline Matrix operator+(Matrix&& m1, Matrix&& m2) { // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
+        QL_REQUIRE(m1.rows() == m2.rows() &&
+                   m1.columns() == m2.columns(),
+                   "matrices with different sizes (" <<
+                   m1.rows() << "x" << m1.columns() << ", " <<
+                   m2.rows() << "x" << m2.columns() << ") cannot be "
+                   "added");
+        std::transform(m1.begin(), m1.end(), m2.begin(), m1.begin(), std::plus<>());
+        return std::move(m1);
+    }
+
+    inline Matrix operator-(const Matrix& m1) {
+        Matrix temp(m1.rows(), m1.columns());
+        std::transform(m1.begin(), m1.end(), temp.begin(), std::negate<>());
+        return temp;
+    }
+
+    inline Matrix operator-(Matrix&& m1) {
+        std::transform(m1.begin(), m1.end(), m1.begin(), std::negate<>());
+        return std::move(m1);
+    }
+
+    inline Matrix operator-(const Matrix& m1, const Matrix& m2) {
         QL_REQUIRE(m1.rows() == m2.rows() &&
                    m1.columns() == m2.columns(),
                    "matrices with different sizes (" <<
@@ -533,33 +585,77 @@ namespace QuantLib {
                    m2.rows() << "x" << m2.columns() << ") cannot be "
                    "subtracted");
         Matrix temp(m1.rows(),m1.columns());
-        std::transform(m1.begin(),m1.end(),m2.begin(),temp.begin(),
-                       std::minus<Real>());
+        std::transform(m1.begin(), m1.end(), m2.begin(), temp.begin(), std::minus<>());
         return temp;
     }
 
-    inline Disposable<Matrix> operator*(const Matrix& m, Real x) {
+    inline Matrix operator-(const Matrix& m1, Matrix&& m2) {
+        QL_REQUIRE(m1.rows() == m2.rows() &&
+                   m1.columns() == m2.columns(),
+                   "matrices with different sizes (" <<
+                   m1.rows() << "x" << m1.columns() << ", " <<
+                   m2.rows() << "x" << m2.columns() << ") cannot be "
+                   "subtracted");
+        std::transform(m1.begin(), m1.end(), m2.begin(), m2.begin(), std::minus<>());
+        return std::move(m2);
+    }
+
+    inline Matrix operator-(Matrix&& m1, const Matrix& m2) {
+        QL_REQUIRE(m1.rows() == m2.rows() &&
+                   m1.columns() == m2.columns(),
+                   "matrices with different sizes (" <<
+                   m1.rows() << "x" << m1.columns() << ", " <<
+                   m2.rows() << "x" << m2.columns() << ") cannot be "
+                   "subtracted");
+        std::transform(m1.begin(), m1.end(), m2.begin(), m1.begin(), std::minus<>());
+        return std::move(m1);
+    }
+
+    inline Matrix operator-(Matrix&& m1, Matrix&& m2) { // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
+        QL_REQUIRE(m1.rows() == m2.rows() &&
+                   m1.columns() == m2.columns(),
+                   "matrices with different sizes (" <<
+                   m1.rows() << "x" << m1.columns() << ", " <<
+                   m2.rows() << "x" << m2.columns() << ") cannot be "
+                   "subtracted");
+        std::transform(m1.begin(), m1.end(), m2.begin(), m1.begin(), std::minus<>());
+        return std::move(m1);
+    }
+
+    inline Matrix operator*(const Matrix& m, Real x) {
         Matrix temp(m.rows(),m.columns());
-        std::transform(m.begin(),m.end(),temp.begin(),
-                       multiply_by<Real>(x));
+        std::transform(m.begin(), m.end(), temp.begin(), [=](Real y) -> Real { return y * x; });
         return temp;
     }
 
-    inline Disposable<Matrix> operator*(Real x, const Matrix& m) {
+    inline Matrix operator*(Matrix&& m, Real x) {
+        std::transform(m.begin(), m.end(), m.begin(), [=](Real y) -> Real { return y * x; });
+        return std::move(m);
+    }
+
+    inline Matrix operator*(Real x, const Matrix& m) {
         Matrix temp(m.rows(),m.columns());
-        std::transform(m.begin(),m.end(),temp.begin(),
-                       multiply_by<Real>(x));
+        std::transform(m.begin(), m.end(), temp.begin(), [=](Real y) -> Real { return x * y; });
         return temp;
     }
 
-    inline Disposable<Matrix> operator/(const Matrix& m, Real x) {
+    inline Matrix operator*(Real x, Matrix&& m) {
+        std::transform(m.begin(), m.end(), m.begin(), [=](Real y) -> Real { return x * y; });
+        return std::move(m);
+    }
+
+    inline Matrix operator/(const Matrix& m, Real x) {
         Matrix temp(m.rows(),m.columns());
-        std::transform(m.begin(),m.end(),temp.begin(),
-                       divide_by<Real>(x));
+        std::transform(m.begin(), m.end(), temp.begin(), [=](Real y) -> Real { return y / x; });
         return temp;
     }
 
-    inline Disposable<Array> operator*(const Array& v, const Matrix& m) {
+    inline Matrix operator/(Matrix&& m, Real x) {
+        std::transform(m.begin(), m.end(), m.begin(), [=](Real y) -> Real { return y / x; });
+        return std::move(m);
+    }
+
+    inline Array operator*(const Array& v, const Matrix& m) {
         QL_REQUIRE(v.size() == m.rows(),
                    "vectors and matrices with different sizes ("
                    << v.size() << ", " << m.rows() << "x" << m.columns() <<
@@ -568,11 +664,11 @@ namespace QuantLib {
         for (Size i=0; i<result.size(); i++)
             result[i] =
                 std::inner_product(v.begin(),v.end(),
-                                   m.column_begin(i),0.0);
+                                   m.column_begin(i),Real(0.0));
         return result;
     }
 
-    inline Disposable<Array> operator*(const Matrix& m, const Array& v) {
+    inline Array operator*(const Matrix& m, const Array& v) {
         QL_REQUIRE(v.size() == m.columns(),
                    "vectors and matrices with different sizes ("
                    << v.size() << ", " << m.rows() << "x" << m.columns() <<
@@ -580,11 +676,11 @@ namespace QuantLib {
         Array result(m.rows());
         for (Size i=0; i<result.size(); i++)
             result[i] =
-                std::inner_product(v.begin(),v.end(),m.row_begin(i),0.0);
+                std::inner_product(v.begin(),v.end(),m.row_begin(i),Real(0.0));
         return result;
     }
 
-    inline Disposable<Matrix> operator*(const Matrix& m1, const Matrix& m2) {
+    inline Matrix operator*(const Matrix& m1, const Matrix& m2) {
         QL_REQUIRE(m1.columns() == m2.rows(),
                    "matrices with different sizes (" <<
                    m1.rows() << "x" << m1.columns() << ", " <<
@@ -601,7 +697,7 @@ namespace QuantLib {
         return result;
     }
 
-    inline Disposable<Matrix> transpose(const Matrix& m) {
+    inline Matrix transpose(const Matrix& m) {
         Matrix result(m.columns(),m.rows());
         #if defined(QL_PATCH_MSVC) && defined(QL_DEBUG)
         if (!m.empty())
@@ -611,13 +707,12 @@ namespace QuantLib {
         return result;
     }
 
-    inline Disposable<Matrix> outerProduct(const Array& v1, const Array& v2) {
+    inline Matrix outerProduct(const Array& v1, const Array& v2) {
         return outerProduct(v1.begin(), v1.end(), v2.begin(), v2.end());
     }
 
     template <class Iterator1, class Iterator2>
-    inline Disposable<Matrix>
-    outerProduct(Iterator1 v1begin, Iterator1 v1end, Iterator2 v2begin, Iterator2 v2end) {
+    inline Matrix outerProduct(Iterator1 v1begin, Iterator1 v1end, Iterator2 v2begin, Iterator2 v2end) {
 
         Size size1 = std::distance(v1begin, v1end);
         QL_REQUIRE(size1>0, "null first vector");
@@ -629,12 +724,12 @@ namespace QuantLib {
 
         for (Size i=0; v1begin!=v1end; i++, v1begin++)
             std::transform(v2begin, v2end, result.row_begin(i),
-                           multiply_by<Real>(*v1begin));
+                           [=](Real y) -> Real { return y * (*v1begin); });
 
         return result;
     }
 
-    inline void swap(Matrix& m1, Matrix& m2) {
+    inline void swap(Matrix& m1, Matrix& m2) noexcept {
         m1.swap(m2);
     }
 

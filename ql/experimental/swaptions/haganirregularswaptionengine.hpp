@@ -39,7 +39,7 @@ namespace QuantLib {
         1. P.S. Hagan: "Methodology for Callable Swaps and Bermudan
            'Exercise into Swaptions'"
         2. P.J. Hunt, J.E. Kennedy: "Implied interest rate pricing
-           models", Finance Stochast. 2, 275–293 (1998)
+           models", Finance Stochast. 2, 275-293 (1998)
     
         \warning Currently a spread is not handled correctly; it
                  should be a minor exercise to account for this
@@ -62,18 +62,19 @@ namespace QuantLib {
           Basket(ext::shared_ptr<IrregularSwap> swap,
                  Handle<YieldTermStructure> termStructure,
                  Handle<SwaptionVolatilityStructure> volatilityStructure);
-          Disposable<Array> compute(Rate lambda = 0.0) const;
+          Array compute(Rate lambda = 0.0) const;
           Real operator()(Rate x) const;
           ext::shared_ptr<VanillaSwap> component(Size i) const;
-          Disposable<Array> weights() const { return compute(lambda_); };
+          Array weights() const { return compute(lambda_); };
           Real& lambda() const { return lambda_; };
+          // NOLINTNEXTLINE(cppcoreguidelines-noexcept-swap,performance-noexcept-swap)
           ext::shared_ptr<IrregularSwap> swap() const { return swap_; };
         private:
             ext::shared_ptr<IrregularSwap> swap_;
             Handle<YieldTermStructure>          termStructure_;
             Handle<SwaptionVolatilityStructure> volatilityStructure_;
-            
-            Real targetNPV_;  
+
+            Real targetNPV_ = 0.0;
 
             ext::shared_ptr<PricingEngine> engine_;
 
@@ -81,8 +82,7 @@ namespace QuantLib {
             std::vector<Real> annuities_;
             std::vector<Date> expiries_;
 
-            mutable Real lambda_;   
-
+            mutable Real lambda_ = 0.0;
         };
 
         Real HKPrice(Basket& basket,ext::shared_ptr<Exercise>& exercise)  const;
@@ -92,7 +92,6 @@ namespace QuantLib {
         Handle<YieldTermStructure>          termStructure_;
         Handle<SwaptionVolatilityStructure> volatilityStructure_;
         class rStarFinder;
-        friend class rStarFinder;
     };
 
 }

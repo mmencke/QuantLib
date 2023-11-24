@@ -20,6 +20,7 @@
 #ifndef quantlib_test_utilities_hpp
 #define quantlib_test_utilities_hpp
 
+#include <ql/indexes/indexmanager.hpp>
 #include <ql/instruments/payoffs.hpp>
 #include <ql/exercise.hpp>
 #include <ql/termstructures/yieldtermstructure.hpp>
@@ -41,6 +42,27 @@
 #include <utility>
 #include <vector>
 
+// This adapts the BOOST_CHECK_SMALL and BOOST_CHECK_CLOSE macros to
+// support a struct as Real for arguments, while fully transparant to regular doubles.
+// Unfortunately boost does not provide a portable way to customize these macros' behaviour,
+// so we need to define wrapper macros QL_CHECK_SMALL etc.
+//
+// It is required to have a function `value` defined that returns the double-value
+// of the Real type (or a value function in the Real type's namespace for ADT).
+
+namespace QuantLib {
+    // overload this function in case Real is something different - it should alway return double
+    inline double value(double x) {
+        return x;
+    }
+}
+
+using QuantLib::value;
+
+#define QL_CHECK_SMALL(FPV, T)  BOOST_CHECK_SMALL(value(FPV), value(T))
+#define QL_CHECK_CLOSE(L, R, T) BOOST_CHECK_CLOSE(value(L), value(R), value(T))
+
+
 // This makes it easier to use array literals (for new code, use std::vector though)
 #define LENGTH(a) (sizeof(a)/sizeof(a[0]))
 
@@ -57,14 +79,12 @@ namespace QuantLib {
             template <class F>
             explicit quantlib_test_case(F test) : test_(test) {}
             void operator()() const {
-                Date before = Settings::instance().evaluationDate();
+                // Restore settings after each test.
+                SavedSettings restore;
+                // Clear all fixings before running a test to avoid interference.
+                IndexManager::instance().clearHistories();
                 BOOST_CHECK(true);
                 test_();
-                Date after = Settings::instance().evaluationDate();
-                if (before != after)
-                    BOOST_ERROR("Evaluation date not reset"
-                                << "\n  before: " << before
-                                << "\n  after:  " << after);
             }
             #if BOOST_VERSION <= 105300
             // defined to avoid unused-variable warnings. It doesn't
@@ -142,8 +162,7 @@ namespace QuantLib {
     Real norm(const Iterator& begin, const Iterator& end, Real h) {
         // squared values
         std::vector<Real> f2(end-begin);
-        std::transform(begin,end,begin,f2.begin(),
-                       std::multiplies<Real>());
+        std::transform(begin, end, begin, f2.begin(), std::multiplies<>());
         // numeric integral of f^2
         Real I = h * (std::accumulate(f2.begin(),f2.end(),Real(0.0))
                       - 0.5*f2.front() - 0.5*f2.back());
@@ -156,11 +175,23 @@ namespace QuantLib {
     }
 
 
-    // this cleans up index-fixing histories when destroyed
-    class IndexHistoryCleaner {
-      public:
-        IndexHistoryCleaner();
-        ~IndexHistoryCleaner();
+    // Used to check that an exception message contains the expected message string
+    struct ExpectedErrorMessage {
+
+        explicit ExpectedErrorMessage(std::string msg) : expected(std::move(msg)) {}
+
+        bool operator()(const Error& ex) const {
+            std::string actual(ex.what());
+            if (actual.find(expected) == std::string::npos) {
+                BOOST_TEST_MESSAGE("Error expected to contain: '" << expected << "'.");
+                BOOST_TEST_MESSAGE("Actual error is: '" << actual << "'.");
+                return false;
+            } else {
+                return true;
+            }
+        }
+
+        std::string expected;
     };
 
 

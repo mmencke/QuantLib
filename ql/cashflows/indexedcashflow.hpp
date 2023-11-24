@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2009 Chris Kenyon
+ Copyright (C) 2022 Quaternion Risk Management Ltd
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -17,7 +18,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
  */
 
-/*! \file simplecashflow.hpp
+/*! \file indexedcashflow.hpp
  \brief Cash flow dependent on an index ratio (NOT a coupon, i.e. no accruals)
  */
 
@@ -41,20 +42,14 @@ namespace QuantLib {
         growthOnly = false means i(T)/i(0), which is a bond-type setting.
         growthOnly = true means i(T)/i(0) - 1, which is a swap-type setting.
     */
-    class IndexedCashFlow : public CashFlow,
-                            public Observer {
+    class IndexedCashFlow : public CashFlow {
       public:
         IndexedCashFlow(Real notional,
-                        const ext::shared_ptr<Index> &index,
+                        ext::shared_ptr<Index> index,
                         const Date& baseDate,
                         const Date& fixingDate,
                         const Date& paymentDate,
-                        bool growthOnly = false)
-        : notional_(notional), index_(index),
-          baseDate_(baseDate), fixingDate_(fixingDate),
-          paymentDate_(paymentDate), growthOnly_(growthOnly) {
-            registerWith(index);
-        }
+                        bool growthOnly = false);
         //! \name Event interface
         //@{
         Date date() const override { return paymentDate_; }
@@ -64,6 +59,8 @@ namespace QuantLib {
         virtual Date fixingDate() const { return fixingDate_; }
         virtual ext::shared_ptr<Index> index() const { return index_; }
         virtual bool growthOnly() const { return growthOnly_; }
+        virtual Real baseFixing() const { return index_->fixing(baseDate()); }
+        virtual Real indexFixing() const { return index_->fixing(fixingDate_); }
         //! \name CashFlow interface
         //@{
         Real amount() const override; // already virtual
@@ -72,15 +69,16 @@ namespace QuantLib {
         //@{
         void accept(AcyclicVisitor&) override;
         //@}
-        //! \name Observer interface
+        //! \name LazyObject interface
         //@{
-        void update() override { notifyObservers(); }
+        void performCalculations() const override;
         //@}
       private:
         Real notional_;
         ext::shared_ptr<Index> index_;
         Date baseDate_, fixingDate_, paymentDate_;
         bool growthOnly_;
+        mutable Real amount_;
     };
 
 

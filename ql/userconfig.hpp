@@ -54,15 +54,16 @@
 #endif
 
 /* Define this to use indexed coupons instead of par coupons in floating
-   legs as the default in 'static bool IborCoupon::usingAtParCoupons();'. */
+   legs as the default in 'bool IborCoupon::Settings::usingAtParCoupons();'. */
 #ifndef QL_USE_INDEXED_COUPON
 //#   define QL_USE_INDEXED_COUPON
 #endif
 
 /* Define this to have singletons return different instances for
-   different sessions. You will have to provide and link with the
-   library a sessionId() function in namespace QuantLib, returning a
-   different session id for each session.*/
+   different threads; in particular, this means that the evaluation
+   date, the stored index fixings and any other settings will be
+   per-thread.
+*/
 #ifndef QL_ENABLE_SESSIONS
 //#   define QL_ENABLE_SESSIONS
 #endif
@@ -76,9 +77,33 @@
 #endif
 
 /* Define this to enable a date resolution down to microseconds and
-   allow for accurate intraday pricing.*/
+   allow for accurate intraday pricing. */
 #ifndef QL_HIGH_RESOLUTION_DATE
 //#    define QL_HIGH_RESOLUTION_DATE
+#endif
+
+/* Define this if you want to throw an exception when a notification
+   loop is detected.  Enabling this option is recommended but might
+   cause existing code to throw. */
+#ifndef QL_THROW_IN_CYCLES
+//#    define QL_THROW_IN_CYCLES
+#endif
+
+/* Undefine this if you want lazy objects to forward all notifications
+   instead of just the first.  Disabling this option is safer in some
+   cases but can be a lot slower. */
+#ifndef QL_FASTER_LAZY_OBJECTS
+#    define QL_FASTER_LAZY_OBJECTS
+#endif
+
+/* Define this to use std::any instead of boost::any. */
+#ifndef QL_USE_STD_ANY
+//#    define QL_USE_STD_ANY
+#endif
+
+/* Define this to use std::optional instead of boost::optional. */
+#ifndef QL_USE_STD_OPTIONAL
+//#    define QL_USE_STD_OPTIONAL
 #endif
 
 /* Define this to use standard smart pointers instead of Boost ones.
@@ -88,39 +113,25 @@
 //#    define QL_USE_STD_SHARED_PTR
 #endif
 
-/* Undefine this to use std::auto_ptr instead of std::unique_ptr. */
-#ifndef QL_USE_STD_UNIQUE_PTR
-#    define QL_USE_STD_UNIQUE_PTR
-#endif
-
-/* Define this to use std::function and std::bind instead of
-   boost::function and boost::bind. */
+/* Undefine this to use boost::function and boost::bind instead of
+   std::function and std::bind. */
 #ifndef QL_USE_STD_FUNCTION
-//#    define QL_USE_STD_FUNCTION
+#    define QL_USE_STD_FUNCTION
 #endif
 
-/* Define this to use std::tuple instead of boost::tuple. */
+/* Undefine this to use boost::tuple instead of std::tuple. */
 #ifndef QL_USE_STD_TUPLE
-//#    define QL_USE_STD_TUPLE
+#    define QL_USE_STD_TUPLE
 #endif
 
-/* Define this if you want to use the Disposable class template.
-   This should be no longer necessary in C++11
-   and might interfere with compiler optimizations. */
-#ifndef QL_USE_DISPOSABLE
-//#    define QL_USE_DISPOSABLE
+/* Define this to enable the implementation of Null as template functions. */
+#ifndef QL_NULL_AS_FUNCTIONS
+//#    define QL_NULL_AS_FUNCTIONS
 #endif
 
 /* Define this to enable the parallel unit test runner */
 #ifndef QL_ENABLE_PARALLEL_UNIT_TEST_RUNNER
 //#    define QL_ENABLE_PARALLEL_UNIT_TEST_RUNNER
-#endif
-
-/* Define this to make Singleton initialization thread-safe.
-   Note: There is no support for thread safety and multiple sessions.
-*/
-#ifndef QL_ENABLE_SINGLETON_THREAD_SAFE_INIT
-//#   define QL_ENABLE_SINGLETON_THREAD_SAFE_INIT
 #endif
 
 #endif

@@ -17,43 +17,5 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-/*! \file composite.hpp
-    \brief composite pattern
-*/
-
-#ifndef quantlib_composite_hpp
-#define quantlib_composite_hpp
-
-#include <ql/qldefines.hpp>
-#include <ql/shared_ptr.hpp>
-#include <list>
-
-namespace QuantLib {
-
-    //! %Composite pattern.
-    /*! The typical use of this class is:
-        \code
-        class CompositeFoo : public Composite<Foo> {
-            ...
-        };
-        \endcode
-        which causes CompositeFoo to inherit from Foo and provides it
-        with methods for adding components. Of course, any abstract
-        Foo interface must still be implemented.
-
-        \ingroup patterns
-    */
-    template <class T>
-    class Composite : public T {
-      protected:
-        std::list<ext::shared_ptr<T> > components_;
-        void add(const ext::shared_ptr<T>& c) { components_.push_back(c); }
-        typedef typename std::list<ext::shared_ptr<T> >::iterator iterator;
-        typedef typename std::list<ext::shared_ptr<T> >::const_iterator
-                                                              const_iterator;
-    };
-
-}
-
-
-#endif
+// Deprecated in version 1.31
+#pragma message("Warning: this file is empty and will disappear in a future release. Do not include it.")

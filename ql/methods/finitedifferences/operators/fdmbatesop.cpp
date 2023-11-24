@@ -77,7 +77,7 @@ namespace QuantLib {
                 = ext::dynamic_pointer_cast<FdmDirichletBoundary>(*iter);
 
             QL_REQUIRE(dirichlet, "FdmBatesOp can only deal with Dirichlet "
-                                  "boundary conditions.")
+                                  "boundary conditions.");
 
             valueOfDerivative
                 = dirichlet->applyAfterApplying(x, valueOfDerivative);
@@ -86,17 +86,13 @@ namespace QuantLib {
         return std::exp(-y*y)*valueOfDerivative;
     }
     
-    Disposable<Array> FdmBatesOp::integro(const Array& r) const {
-        const ext::shared_ptr<FdmLinearOpLayout> layout = mesher_->layout();
-        
-        QL_REQUIRE(layout->dim().size() == 2, "invalid layout dimension");
+    Array FdmBatesOp::integro(const Array& r) const {
+        QL_REQUIRE(mesher_->layout()->dim().size() == 2, "invalid layout dimension");
 
-        Array x(layout->dim()[0]);
-        Matrix f(layout->dim()[1], layout->dim()[0]);
+        Array x(mesher_->layout()->dim()[0]);
+        Matrix f(mesher_->layout()->dim()[1], mesher_->layout()->dim()[0]);
         
-        const FdmLinearOpIterator endIter = layout->end();
-        for (FdmLinearOpIterator iter = layout->begin(); iter != endIter;
-            ++iter) {
+        for (const auto& iter : *mesher_->layout()) {
             const Size i = iter.coordinates()[0];
             const Size j = iter.coordinates()[1];
             
@@ -111,7 +107,7 @@ namespace QuantLib {
         }
         
         Array integral(r.size());
-        for (FdmLinearOpIterator iter=layout->begin(); iter!=endIter; ++iter) {
+        for (const auto& iter : *mesher_->layout()) {
             const Size i = iter.coordinates()[0];
             const Size j = iter.coordinates()[1];
 
@@ -123,10 +119,8 @@ namespace QuantLib {
         return lambda_*(integral-r);
     }
 
-#if !defined(QL_NO_UBLAS_SUPPORT)
-    Disposable<std::vector<SparseMatrix> > FdmBatesOp::toMatrixDecomp() const {
+    std::vector<SparseMatrix> FdmBatesOp::toMatrixDecomp() const {
         QL_FAIL("not implemented");
     }
-#endif
 
 }

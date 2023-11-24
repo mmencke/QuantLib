@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2001, 2002, 2003 Sadruddin Rejeb
+ Copyright (C) 2021 Magnus Mencke
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -29,7 +30,7 @@ namespace QuantLib {
                               bool withFellerConstraint)
     : CoxIngersollRoss(x0, theta, k, sigma, withFellerConstraint),
       TermStructureConsistentModel(termStructure){
-        generateArguments();
+        ExtendedCoxIngersollRoss::generateArguments();
     }
 
     ext::shared_ptr<Lattice> ExtendedCoxIngersollRoss::tree(
@@ -92,7 +93,10 @@ namespace QuantLib {
         NonCentralCumulativeChiSquareDistribution chis(df, ncps);
         NonCentralCumulativeChiSquareDistribution chit(df, ncpt);
 
-        Real z = std::log(CoxIngersollRoss::A(t,s)/strike)/b;
+        Real discountShift = (discountT*CoxIngersollRoss::A(0.0,s)*std::exp(-B(0.0,s)*x0()))/
+        (discountS*CoxIngersollRoss::A(0.0,t)*std::exp(-B(0.0,t)*x0()));
+        
+        Real z = (std::log(CoxIngersollRoss::A(t,s)/strike)-std::log(discountShift))/b;
         Real call = discountS*chis(2.0*z*(rho+psi+b)) -
             strike*discountT*chit(2.0*z*(rho+psi));
         if (type == Option::Call)

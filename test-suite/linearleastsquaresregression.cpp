@@ -18,30 +18,23 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "linearleastsquaresregression.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-#include <ql/math/functional.hpp>
 #include <ql/math/randomnumbers/rngtraits.hpp>
 #include <ql/math/linearleastsquaresregression.hpp>
 #include <ql/functional.hpp>
-
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#endif
 #include <boost/circular_buffer.hpp>
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic pop
-#endif
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-void LinearLeastSquaresRegressionTest::testRegression() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(LinearLeastSquaresRegressionTest)
+
+BOOST_AUTO_TEST_CASE(testRegression) {
 
     BOOST_TEST_MESSAGE("Testing linear least-squares regression...");
-
-    SavedSettings backup;
 
     const Real tolerance = 0.05;
 
@@ -49,10 +42,10 @@ void LinearLeastSquaresRegressionTest::testRegression() {
     PseudoRandom::rng_type rng(PseudoRandom::urng_type(1234U));
 
     std::vector<ext::function<Real(Real)>> v = {
-        [](Real x){ return 1.0; },
-        [](Real x){ return x; },
-        [](Real x){ return x*x; },
-        [](Real x){ return std::sin(x); }
+        [](Real x) -> Real { return 1.0; },
+        [](Real x) -> Real { return x; },
+        [](Real x) -> Real { return x*x; },
+        [](Real x) -> Real { return std::sin(x); }
     };
 
     std::vector<ext::function<Real(Real)>> w(v);
@@ -124,15 +117,12 @@ namespace linear_least_square_regression_test {
 
 }
 
-void LinearLeastSquaresRegressionTest::testMultiDimRegression() {
+BOOST_AUTO_TEST_CASE(testMultiDimRegression) {
 
     BOOST_TEST_MESSAGE(
         "Testing multi-dimensional linear least-squares regression...");
 
-    using namespace ext::placeholders;
     using namespace linear_least_square_regression_test;
-
-    SavedSettings backup;
 
     const Size nr=100000;
     const Size dims = 4;
@@ -140,7 +130,7 @@ void LinearLeastSquaresRegressionTest::testMultiDimRegression() {
     PseudoRandom::rng_type rng(PseudoRandom::urng_type(1234U));
 
     std::vector<ext::function<Real(Array)> > v;
-    v.emplace_back(constant<Array, Real>(1.0));
+    v.emplace_back([](const Array& x) { return 1.0; });
     for (Size i=0; i < dims; ++i) {
         v.emplace_back(get_item(i));
     }
@@ -199,14 +189,12 @@ void LinearLeastSquaresRegressionTest::testMultiDimRegression() {
     }
 }
 
-void LinearLeastSquaresRegressionTest::test1dLinearRegression() {
+BOOST_AUTO_TEST_CASE(test1dLinearRegression) {
 
     BOOST_TEST_MESSAGE("Testing 1D simple linear least-squares regression...");
 
     /* Example taken from the QuantLib-User list, see posting
     * Multiple linear regression/weighted regression, Boris Skorodumov */
-
-    SavedSettings backup;
 
     std::vector<Real> x = {2.4, 1.8, 2.5, 3.0, 2.1, 1.2, 2.0, 2.7, 3.6};
     std::vector<Real> y = {7.8, 5.5, 8.0, 9.0, 6.5, 4.0, 6.3, 8.4, 10.2};
@@ -259,15 +247,6 @@ void LinearLeastSquaresRegressionTest::test1dLinearRegression() {
     }    
 }
 
+BOOST_AUTO_TEST_SUITE_END()
 
-test_suite* LinearLeastSquaresRegressionTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("linear least squares regression tests");
-    suite->add(QUANTLIB_TEST_CASE(
-        &LinearLeastSquaresRegressionTest::testRegression));
-    suite->add(QUANTLIB_TEST_CASE(
-        &LinearLeastSquaresRegressionTest::testMultiDimRegression));
-    suite->add(QUANTLIB_TEST_CASE(
-        &LinearLeastSquaresRegressionTest::test1dLinearRegression));
-    return suite;
-}
-
+BOOST_AUTO_TEST_SUITE_END()

@@ -18,10 +18,12 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "lowdiscrepancysequences.hpp"
+#include "speedlevel.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/math/statistics/discrepancystatistics.hpp>
 #include <ql/math/statistics/sequencestatistics.hpp>
+#include <ql/math/randomnumbers/burley2020sobolrsg.hpp>
 #include <ql/math/randomnumbers/faurersg.hpp>
 #include <ql/math/randomnumbers/haltonrsg.hpp>
 #include <ql/math/randomnumbers/mt19937uniformrng.hpp>
@@ -44,12 +46,16 @@ using namespace boost::unit_test_framework;
 
 using std::fabs;
 
-void LowDiscrepancyTest::testSeedGenerator() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(LowDiscrepancyTest)
+
+BOOST_AUTO_TEST_CASE(testSeedGenerator) {
     BOOST_TEST_MESSAGE("Testing random-seed generator...");
     SeedGenerator::instance().get();
 }
 
-void LowDiscrepancyTest::testPolynomialsModuloTwo() {
+BOOST_AUTO_TEST_CASE(testPolynomialsModuloTwo) {
 
     BOOST_TEST_MESSAGE("Testing " << PPMT_MAX_DIM <<
                        " primitive polynomials modulo two...");
@@ -82,7 +88,7 @@ void LowDiscrepancyTest::testPolynomialsModuloTwo() {
 
 }
 
-void LowDiscrepancyTest::testRandomizedLowDiscrepancySequence() {
+BOOST_AUTO_TEST_CASE(testRandomizedLowDiscrepancySequence) {
 
     BOOST_TEST_MESSAGE("Testing randomized low-discrepancy sequences up to "
                        "dimension " << PPMT_MAX_DIM << "...");
@@ -165,18 +171,15 @@ namespace
     }
 }
 
+BOOST_AUTO_TEST_CASE(testRandomizedLattices){
 
-void LowDiscrepancyTest::testRandomizedLattices()
-{
     testRandomizedLatticeRule(LatticeRule::A, "A");
     testRandomizedLatticeRule(LatticeRule::B, "B");
     testRandomizedLatticeRule(LatticeRule::C, "C");
     testRandomizedLatticeRule(LatticeRule::D, "D");
-
 }
 
-
-void LowDiscrepancyTest::testSobol() {
+BOOST_AUTO_TEST_CASE(testSobol) {
 
     BOOST_TEST_MESSAGE("Testing Sobol sequences up to dimension "
                        << PPMT_MAX_DIM << "...");
@@ -260,7 +263,7 @@ void LowDiscrepancyTest::testSobol() {
     }
 }
 
-void LowDiscrepancyTest::testFaure() {
+BOOST_AUTO_TEST_CASE(testFaure) {
 
     BOOST_TEST_MESSAGE("Testing Faure sequences...");
 
@@ -409,7 +412,7 @@ void LowDiscrepancyTest::testFaure() {
     }
 }
 
-void LowDiscrepancyTest::testHalton() {
+BOOST_AUTO_TEST_CASE(testHalton) {
 
     BOOST_TEST_MESSAGE("Testing Halton sequences...");
 
@@ -566,9 +569,8 @@ namespace {
     const Real dim002DiscrRShiftHalton[] = {1.32e-003, 7.25e-004};
     const Real dim002DiscrRStRShHalton[] = {1.35e-003, 9.43e-004};
     const Real dim002DiscrRStartHalton[] = {1.08e-003, 6.40e-004};
-    const Real dim002Discr__Unit_Sobol[] = {
-        8.33e-004, 4.32e-004, 2.24e-004, 1.12e-004,
-        5.69e-005, 2.14e-005 // , null
+    const Real dim002Discr_Unit_Sobol[] = {
+        8.33e-004, 4.32e-004, 2.24e-004, 1.12e-004, 5.69e-005, 2.14e-005 // , null
     };
 
     const Real dim003Discr_Sobol[] = {
@@ -586,10 +588,8 @@ namespace {
     const Real dim003DiscrRShiftHalton[] = {1.96e-003, 1.03e-003};
     const Real dim003DiscrRStRShHalton[] = {2.17e-003, 1.54e-003};
     const Real dim003DiscrRStartHalton[] = {1.48e-003, 7.77e-004};
-    const Real dim003Discr__Unit_Sobol[] = {
-        1.21e-003, 6.37e-004, 3.40e-004, 1.75e-004,
-        9.21e-005, 4.79e-005, 2.56e-005
-    };
+    const Real dim003Discr_Unit_Sobol[] = {1.21e-003, 6.37e-004, 3.40e-004, 1.75e-004,
+                                           9.21e-005, 4.79e-005, 2.56e-005};
 
     const Real dim005Discr_Sobol[] = {
         1.59e-003, 9.55e-004, 5.33e-004, 3.22e-004,
@@ -606,10 +606,8 @@ namespace {
     const Real dim005DiscrRShiftHalton[] = {2.02e-003, 1.36e-003};
     const Real dim005DiscrRStRShHalton[] = {2.11e-003, 1.25e-003};
     const Real dim005DiscrRStartHalton[] = {1.74e-003, 1.08e-003};
-    const Real dim005Discr__Unit_Sobol[] = {
-        1.85e-003, 9.39e-004, 5.19e-004, 2.99e-004,
-        1.75e-004, 9.51e-005, 5.55e-005
-    };
+    const Real dim005Discr_Unit_Sobol[] = {1.85e-003, 9.39e-004, 5.19e-004, 2.99e-004,
+                                           1.75e-004, 9.51e-005, 5.55e-005};
 
     const Real dim010DiscrJackel_Sobol[] = {
         7.08e-004, 5.31e-004, 3.60e-004, 2.18e-004,
@@ -630,10 +628,8 @@ namespace {
     const Real dim010DiscrRShiftHalton[] = {9.25e-004, 6.40e-004};
     const Real dim010DiscrRStRShHalton[] = {8.41e-004, 5.42e-004};
     const Real dim010DiscrRStartHalton[] = {7.89e-004, 5.33e-004};
-    const Real dim010Discr__Unit_Sobol[] = {
-        7.67e-004, 4.92e-004, 3.47e-004, 2.34e-004,
-        1.39e-004, 9.47e-005, 5.72e-005
-    };
+    const Real dim010Discr_Unit_Sobol[] = {7.67e-004, 4.92e-004, 3.47e-004, 2.34e-004,
+                                           1.39e-004, 9.47e-005, 5.72e-005};
 
     const Real dim015DiscrJackel_Sobol[] = {
         1.59e-004, 1.23e-004, 7.73e-005, 5.51e-005,
@@ -654,10 +650,8 @@ namespace {
     const Real dim015DiscrRShiftHalton[] = {1.75e-004, 1.19e-004};
     const Real dim015DiscrRStRShHalton[] = {1.66e-004, 1.34e-004};
     const Real dim015DiscrRStartHalton[] = {2.09e-004, 1.30e-004};
-    const Real dim015Discr__Unit_Sobol[] = {
-        2.24e-004, 1.39e-004, 9.86e-005, 6.02e-005,
-        4.39e-005, 3.06e-005, 2.32e-005
-    };
+    const Real dim015Discr_Unit_Sobol[] = {2.24e-004, 1.39e-004, 9.86e-005, 6.02e-005,
+                                           4.39e-005, 3.06e-005, 2.32e-005};
 
     const Real dim030DiscrJackel_Sobol[] = {
         6.43e-007, 5.28e-007, 3.88e-007, 2.49e-007,
@@ -678,10 +672,8 @@ namespace {
     const Real dim030DiscrRShiftHalton[] = {8.11e-007, 6.05e-007};
     const Real dim030DiscrRStRShHalton[] = {1.85e-006, 1.03e-006};
     const Real dim030DiscrRStartHalton[] = {4.42e-007, 4.64e-007};
-    const Real dim030Discr__Unit_Sobol[] = {
-        4.35e-005, 2.17e-005, 1.09e-005, 5.43e-006,
-        2.73e-006, 1.37e-006, 6.90e-007
-    };
+    const Real dim030Discr_Unit_Sobol[] = {4.35e-005, 2.17e-005, 1.09e-005, 5.43e-006,
+                                           2.73e-006, 1.37e-006, 6.90e-007};
 
     const Real dim050DiscrJackel_Sobol[] = {
         2.98e-010, 2.91e-010, 2.62e-010, 1.53e-010,
@@ -706,10 +698,8 @@ namespace {
     const Real dim050DiscrRShiftHalton[] = {1.14e-010, 1.25e-010};
     const Real dim050DiscrRStRShHalton[] = {2.92e-010, 5.02e-010};
     const Real dim050DiscrRStartHalton[] = {1.93e-010, 6.82e-010};
-    const Real dim050Discr__Unit_Sobol[] = {
-        1.63e-005, 8.14e-006, 4.07e-006, 2.04e-006,
-        1.02e-006, 5.09e-007, 2.54e-007
-    };
+    const Real dim050Discr_Unit_Sobol[] = {1.63e-005, 8.14e-006, 4.07e-006, 2.04e-006,
+                                           1.02e-006, 5.09e-007, 2.54e-007};
 
     const Real dim100DiscrJackel_Sobol[] = {
         1.26e-018, 1.55e-018, 8.46e-019, 4.43e-019,
@@ -734,10 +724,8 @@ namespace {
     const Real dim100DiscrRShiftHalton[] = {3.36e-019, 2.19e-019};
     const Real dim100DiscrRStRShHalton[] = {4.44e-019, 2.24e-019};
     const Real dim100DiscrRStartHalton[] = {9.85e-020, 8.34e-019};
-    const Real dim100Discr__Unit_Sobol[] = {
-        4.97e-006, 2.48e-006, 1.24e-006, 6.20e-007,
-        3.10e-007, 1.55e-007, 7.76e-008
-    };
+    const Real dim100Discr_Unit_Sobol[] = {4.97e-006, 2.48e-006, 1.24e-006, 6.20e-007,
+                                           3.10e-007, 1.55e-007, 7.76e-008};
 
     const Size dimensionality[] = {2, 3, 5, 10, 15, 30, 50, 100 };
 
@@ -898,8 +886,7 @@ namespace {
 
 }
 
-
-void LowDiscrepancyTest::testMersenneTwisterDiscrepancy() {
+BOOST_AUTO_TEST_CASE(testMersenneTwisterDiscrepancy) {
 
     BOOST_TEST_MESSAGE("Testing Mersenne-twister discrepancy...");
 
@@ -916,7 +903,7 @@ void LowDiscrepancyTest::testMersenneTwisterDiscrepancy() {
                              "DiscrMersenneTwis");
 }
 
-void LowDiscrepancyTest::testPlainHaltonDiscrepancy() {
+BOOST_AUTO_TEST_CASE(testPlainHaltonDiscrepancy) {
 
     BOOST_TEST_MESSAGE("Testing plain Halton discrepancy...");
 
@@ -932,7 +919,7 @@ void LowDiscrepancyTest::testPlainHaltonDiscrepancy() {
                              "DiscrPlain_Halton");
 }
 
-void LowDiscrepancyTest::testRandomStartHaltonDiscrepancy() {
+BOOST_AUTO_TEST_CASE(testRandomStartHaltonDiscrepancy) {
 
     BOOST_TEST_MESSAGE("Testing random-start Halton discrepancy...");
 
@@ -948,7 +935,7 @@ void LowDiscrepancyTest::testRandomStartHaltonDiscrepancy() {
                              "DiscrRStartHalton");
 }
 
-void LowDiscrepancyTest::testRandomShiftHaltonDiscrepancy() {
+BOOST_AUTO_TEST_CASE(testRandomShiftHaltonDiscrepancy) {
 
     BOOST_TEST_MESSAGE("Testing random-shift Halton discrepancy...");
 
@@ -964,7 +951,7 @@ void LowDiscrepancyTest::testRandomShiftHaltonDiscrepancy() {
                              "DiscrRShiftHalton");
 }
 
-void LowDiscrepancyTest::testRandomStartRandomShiftHaltonDiscrepancy() {
+BOOST_AUTO_TEST_CASE(testRandomStartRandomShiftHaltonDiscrepancy) {
 
     BOOST_TEST_MESSAGE("Testing random-start, random-shift Halton discrepancy...");
 
@@ -980,7 +967,7 @@ void LowDiscrepancyTest::testRandomStartRandomShiftHaltonDiscrepancy() {
                              "DiscrRStRShHalton");
 }
 
-void LowDiscrepancyTest::testJackelSobolDiscrepancy() {
+BOOST_AUTO_TEST_CASE(testJackelSobolDiscrepancy) {
 
     BOOST_TEST_MESSAGE("Testing Jaeckel-Sobol discrepancy...");
 
@@ -996,7 +983,7 @@ void LowDiscrepancyTest::testJackelSobolDiscrepancy() {
                              "DiscrJackel_Sobol");
 }
 
-void LowDiscrepancyTest::testSobolLevitanSobolDiscrepancy() {
+BOOST_AUTO_TEST_CASE(testSobolLevitanSobolDiscrepancy) {
 
     BOOST_TEST_MESSAGE("Testing Levitan-Sobol discrepancy...");
 
@@ -1012,7 +999,7 @@ void LowDiscrepancyTest::testSobolLevitanSobolDiscrepancy() {
                              "DiscrSobLev_Sobol");
 }
 
-void LowDiscrepancyTest::testSobolLevitanLemieuxSobolDiscrepancy() {
+BOOST_AUTO_TEST_CASE(testSobolLevitanLemieuxSobolDiscrepancy) {
 
     BOOST_TEST_MESSAGE("Testing Levitan-Lemieux-Sobol discrepancy...");
 
@@ -1028,24 +1015,20 @@ void LowDiscrepancyTest::testSobolLevitanLemieuxSobolDiscrepancy() {
                              "DiscrSobLevLem_Sobol");
 }
 
-void LowDiscrepancyTest::testUnitSobolDiscrepancy() {
+BOOST_AUTO_TEST_CASE(testUnitSobolDiscrepancy) {
 
     BOOST_TEST_MESSAGE("Testing unit Sobol discrepancy...");
 
-    const Real * const discrepancy[8] = {
-        dim002Discr__Unit_Sobol, dim003Discr__Unit_Sobol,
-        dim005Discr__Unit_Sobol, dim010Discr__Unit_Sobol,
-        dim015Discr__Unit_Sobol, dim030Discr__Unit_Sobol,
-        dim050Discr__Unit_Sobol, dim100Discr__Unit_Sobol};
+    const Real* const discrepancy[8] = {dim002Discr_Unit_Sobol, dim003Discr_Unit_Sobol,
+                                        dim005Discr_Unit_Sobol, dim010Discr_Unit_Sobol,
+                                        dim015Discr_Unit_Sobol, dim030Discr_Unit_Sobol,
+                                        dim050Discr_Unit_Sobol, dim100Discr_Unit_Sobol};
 
-        testGeneratorDiscrepancy(SobolFactory(SobolRsg::Unit),
-                             discrepancy,
-                             "UnitSobolDiscrepancy.txt",
+    testGeneratorDiscrepancy(SobolFactory(SobolRsg::Unit), discrepancy, "UnitSobolDiscrepancy.txt",
                              "Discr__Unit_Sobol");
 }
 
-
-void LowDiscrepancyTest::testSobolSkipping() {
+BOOST_AUTO_TEST_CASE(testSobolSkipping) {
 
     BOOST_TEST_MESSAGE("Testing Sobol sequence skipping...");
 
@@ -1072,8 +1055,8 @@ void LowDiscrepancyTest::testSobolSkipping() {
 
                 // compare next 100 samples
                 for (Size m = 0; m < 100; m++) {
-                    std::vector<boost::uint_least32_t> s1 = rsg1.nextInt32Sequence();
-                    std::vector<boost::uint_least32_t> s2 = rsg2.nextInt32Sequence();
+                    std::vector<std::uint_least32_t> s1 = rsg1.nextInt32Sequence();
+                    std::vector<std::uint_least32_t> s2 = rsg2.nextInt32Sequence();
                     for (Size n = 0; n < s1.size(); n++) {
                         if (s1[n] != s2[n]) {
                             BOOST_ERROR("Mismatch after skipping:"
@@ -1088,47 +1071,73 @@ void LowDiscrepancyTest::testSobolSkipping() {
     }
 }
 
+BOOST_AUTO_TEST_CASE(testHighDimensionalIntegrals, *precondition(if_speed(Slow))) {
+    BOOST_TEST_MESSAGE("Testing High Dimensional Integrals");
 
-test_suite* LowDiscrepancyTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Low-discrepancy sequence tests");
+    /* We are running "Integration test 1, results for high dimensions" (Figure 9) from:
 
-    suite->add(QUANTLIB_TEST_CASE(
-           &LowDiscrepancyTest::testRandomizedLattices));
+       Sobol, Asotsky, Kreinin, Kucherenko: Construction and Comparison of High-Dimensional Sobol’
+       Generators, available at https://www.broda.co.uk/doc/HD_SobolGenerator.pdf
 
+       We check the error of Kuo1 (using Gray code and sequential numbers) roughly against what
+       their graph suggests. In addition we check the error of the Burley2020-scrambled version of
+       Kuo1 against what we experimentally find - the error turns out to be more than one order
+       better than the unscrambled version. */
 
-    suite->add(QUANTLIB_TEST_CASE(
-           &LowDiscrepancyTest::testSeedGenerator));
+    auto integrand = [](const std::vector<Real>& c, const std::vector<Real>& x) {
+        Real p = 1.0;
+        for (Size i = 0; i < c.size(); ++i) {
+            p *= 1.0 + c[i] * (x[i] - 0.5);
+        }
+        return p;
+    };
 
-    suite->add(QUANTLIB_TEST_CASE(
-           &LowDiscrepancyTest::testPolynomialsModuloTwo));
+    Size N = 30031;
 
-    suite->add(QUANTLIB_TEST_CASE(&LowDiscrepancyTest::testSobol));
-    suite->add(QUANTLIB_TEST_CASE(&LowDiscrepancyTest::testHalton));
-    suite->add(QUANTLIB_TEST_CASE(&LowDiscrepancyTest::testFaure));
+    BOOST_TEST_MESSAGE("dimension,Sobol(Gray),Sobol(Seq),Burley2020");
 
-    suite->add(QUANTLIB_TEST_CASE(
-           &LowDiscrepancyTest::testMersenneTwisterDiscrepancy));
-    suite->add(QUANTLIB_TEST_CASE(
-           &LowDiscrepancyTest::testPlainHaltonDiscrepancy));
-    suite->add(QUANTLIB_TEST_CASE(
-           &LowDiscrepancyTest::testRandomStartHaltonDiscrepancy));
-    suite->add(QUANTLIB_TEST_CASE(
-           &LowDiscrepancyTest::testRandomShiftHaltonDiscrepancy));
-    suite->add(QUANTLIB_TEST_CASE(
-           &LowDiscrepancyTest::testRandomStartRandomShiftHaltonDiscrepancy));
-    suite->add(QUANTLIB_TEST_CASE(
-        &LowDiscrepancyTest::testUnitSobolDiscrepancy));
-    suite->add(QUANTLIB_TEST_CASE(
-           &LowDiscrepancyTest::testJackelSobolDiscrepancy));
-    suite->add(QUANTLIB_TEST_CASE(
-           &LowDiscrepancyTest::testSobolLevitanSobolDiscrepancy));
-    suite->add(QUANTLIB_TEST_CASE(
-           &LowDiscrepancyTest::testSobolLevitanLemieuxSobolDiscrepancy));
+    std::vector<Size> dimension = {1000, 2000, 5000};
+    std::vector<std::vector<Real>> expectedOrderOfError = {
+        {-3.0, -3.0, -4.5}, {-2.5, -2.5, -4.0}, {-2.0, -2.0, -4.0}};
 
-    suite->add(QUANTLIB_TEST_CASE(&LowDiscrepancyTest::testSobolSkipping));
+    for (Size d = 0; d < dimension.size(); ++d) {
 
-    suite->add(QUANTLIB_TEST_CASE(
-           &LowDiscrepancyTest::testRandomizedLowDiscrepancySequence));
+        std::vector<Real> c1(dimension[d], 0.01);
 
-    return suite;
+        SobolRsg s1(dimension[d], 42, SobolRsg::DirectionIntegers::Kuo, true);
+        SobolRsg s2(dimension[d], 42, SobolRsg::DirectionIntegers::Kuo, false);
+        Burley2020SobolRsg s3(dimension[d], 42, SobolRsg::DirectionIntegers::Kuo, 43);
+
+        Real I1 = 0.0, I2 = 0.0, I3 = 0.0;
+        for (Size i = 0; i < N; ++i) {
+            I1 += integrand(c1, s1.nextSequence().value) / static_cast<double>(N);
+            I2 += integrand(c1, s2.nextSequence().value) / static_cast<double>(N);
+            I3 += integrand(c1, s3.nextSequence().value) / static_cast<double>(N);
+        }
+
+        Real errOrder1 = std::log10(std::abs(I1 - 1.0));
+        Real errOrder2 = std::log10(std::abs(I2 - 1.0));
+        Real errOrder3 = std::log10(std::abs(I3 - 1.0));
+
+        BOOST_TEST_MESSAGE(dimension[d] << "," << errOrder1 << "," << errOrder2 << ","
+                                        << errOrder3);
+
+        BOOST_CHECK_MESSAGE(errOrder1 < expectedOrderOfError[d][0],
+                            "order of error for dimension " + std::to_string(dimension[d]) + " is" +
+                                std::to_string(errOrder1) + " expected " +
+                                std::to_string(expectedOrderOfError[d][0]));
+        BOOST_CHECK_MESSAGE(errOrder2 < expectedOrderOfError[d][1],
+                            "order of error for dimension " + std::to_string(dimension[d]) + " is" +
+                                std::to_string(errOrder2) + " expected " +
+                                std::to_string(expectedOrderOfError[d][1]));
+        BOOST_CHECK_MESSAGE(errOrder3 < expectedOrderOfError[d][2],
+                            "order of error for dimension " + std::to_string(dimension[d]) + " is" +
+                                std::to_string(errOrder3) + " expected " +
+                                std::to_string(expectedOrderOfError[d][2]));
+    }
 }
+
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()

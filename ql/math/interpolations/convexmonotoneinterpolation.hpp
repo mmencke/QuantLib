@@ -93,9 +93,9 @@ namespace QuantLib {
         static const Size requiredPoints = 2;
         static const Size dataSizeAdjustment = 1;
 
-        explicit ConvexMonotone(Real quadraticity = 0.3,
-                                Real monotonicity = 0.7,
-                                bool forcePositive = true)
+        ConvexMonotone(Real quadraticity = 0.3,
+                       Real monotonicity = 0.7,
+                       bool forcePositive = true)
         : quadraticity_(quadraticity), monotonicity_(monotonicity),
           forcePositive_(forcePositive) {}
 
@@ -171,7 +171,7 @@ namespace QuantLib {
 
         //the first value in the y-vector is ignored.
         template <class I1, class I2>
-        class ConvexMonotoneImpl : public Interpolation::templateImpl<I1, I2> {
+        class ConvexMonotoneImpl final : public Interpolation::templateImpl<I1, I2> {
             typedef std::map<Real, ext::shared_ptr<SectionHelper> >
                                                                    helper_map;
           public:
@@ -393,13 +393,14 @@ namespace QuantLib {
 
         class ConvexMonotone4MinHelper : public ConvexMonotone4Helper {
           public:
-            ConvexMonotone4MinHelper(Real xPrev,  Real xNext,
-                                  Real gPrev, Real gNext,
-                                  Real fAverage, Real eta4,
-                                  Real prevPrimitive)
-            : ConvexMonotone4Helper(xPrev, xNext, gPrev, gNext,
-                                    fAverage, eta4, prevPrimitive),
-              splitRegion_(false) {
+            ConvexMonotone4MinHelper(Real xPrev,
+                                     Real xNext,
+                                     Real gPrev,
+                                     Real gNext,
+                                     Real fAverage,
+                                     Real eta4,
+                                     Real prevPrimitive)
+            : ConvexMonotone4Helper(xPrev, xNext, gPrev, gNext, fAverage, eta4, prevPrimitive) {
                 if ( A_+ fAverage_ <= 0.0 ) {
                     splitRegion_ = true;
                     Real fPrev = gPrev_+fAverage_;
@@ -455,7 +456,7 @@ namespace QuantLib {
             }
 
           private:
-            bool splitRegion_;
+            bool splitRegion_ = false;
             Real xRatio_, x2_, x3_;
         };
 
@@ -511,13 +512,10 @@ namespace QuantLib {
 
         class QuadraticMinHelper : public SectionHelper {
           public:
-            QuadraticMinHelper(Real xPrev, Real xNext,
-                               Real fPrev, Real fNext,
-                               Real fAverage,
-                               Real prevPrimitive)
-            : splitRegion_(false), x1_(xPrev), x4_(xNext),
-              primitive1_(prevPrimitive), fAverage_(fAverage),
-              fPrev_(fPrev), fNext_(fNext), xRatio_(1.0) {
+            QuadraticMinHelper(
+                Real xPrev, Real xNext, Real fPrev, Real fNext, Real fAverage, Real prevPrimitive)
+            : x1_(xPrev), x4_(xNext), primitive1_(prevPrimitive), fAverage_(fAverage),
+              fPrev_(fPrev), fNext_(fNext) {
                 a_ = 3*fPrev_ + 3*fNext_ - 6*fAverage_;
                 b_ = -(4*fPrev_ + 2*fNext_ - 6*fAverage_);
                 c_ = fPrev_;
@@ -579,11 +577,11 @@ namespace QuantLib {
             Real fNext() const override { return fNext_; }
 
           private:
-            bool splitRegion_;
+            bool splitRegion_ = false;
             Real x1_, x2_, x3_, x4_;
             Real a_, b_, c_;
             Real primitive1_, primitive2_;
-            Real fAverage_, fPrev_, fNext_, xScaling_, xRatio_;
+            Real fAverage_, fPrev_, fNext_, xScaling_, xRatio_ = 1.0;
         };
 
         template <class I1, class I2>

@@ -44,8 +44,7 @@ namespace QuantLib {
       capletCalibrated_(false), reversion_(ConstantParameter(reversion, NoConstraint())),
       sigma_(arguments_[0]), volstepdates_(std::move(volstepdates)),
       volatilities_(std::move(volatilities)), swaptionVol_(swaptionVol),
-      capletVol_(Handle<OptionletVolatilityStructure>()), swaptionExpiries_(swaptionExpiries),
-      capletExpiries_(std::vector<Date>()), swaptionTenors_(swaptionTenors),
+      swaptionExpiries_(swaptionExpiries), swaptionTenors_(swaptionTenors),
       swapIndexBase_(swapIndexBase), iborIndex_(swapIndexBase->iborIndex()) {
 
         QL_REQUIRE(swaptionExpiries.size() == swaptionTenors.size(),
@@ -74,10 +73,8 @@ namespace QuantLib {
     : Gaussian1dModel(termStructure), CalibratedModel(1), modelSettings_(std::move(modelSettings)),
       capletCalibrated_(true), reversion_(ConstantParameter(reversion, NoConstraint())),
       sigma_(arguments_[0]), volstepdates_(std::move(volstepdates)),
-      volatilities_(std::move(volatilities)), swaptionVol_(Handle<SwaptionVolatilityStructure>()),
-      capletVol_(capletVol), swaptionExpiries_(std::vector<Date>()),
-      capletExpiries_(capletExpiries), swaptionTenors_(std::vector<Period>()),
-      iborIndex_(std::move(iborIndex)) {
+      volatilities_(std::move(volatilities)), capletVol_(capletVol),
+      capletExpiries_(capletExpiries), iborIndex_(std::move(iborIndex)) {
 
         QL_REQUIRE(!capletExpiries.empty(),
                    "need at least one caplet expiry to calibrate numeraire");
@@ -176,33 +173,22 @@ namespace QuantLib {
                 if (i->second.paymentDates_.back() > numeraireDate_) {
                     numeraireDate_ = i->second.paymentDates_.back();
                     numeraireKnown = i->second.paymentDates_.back();
-                    if (i != calibrationPoints_.rbegin()) {
-                        done = false;
-                    }
+                    done = i == calibrationPoints_.rbegin();
                 }
-                // Inlining this into the loop condition causes
-                // a bogus compilation error wih g++ 4.0.1 on Mac OS X
-                std::vector<Date>::const_reverse_iterator rend =
-                    i->second.paymentDates_.rend();
-                for (std::vector<Date>::const_reverse_iterator j =
-                         i->second.paymentDates_.rbegin();
-                     j != rend && done; ++j) {
+                for (auto j = i->second.paymentDates_.rbegin();
+                     j != i->second.paymentDates_.rend() && done; ++j) {
                     if (*j < numeraireKnown) {
                         if (capletCalibrated_) {
                             makeCapletCalibrationPoint(*j);
                             done = false;
                             break;
                         } else {
-                            UpRounding rounder(0);
-                            makeSwaptionCalibrationPoint(
-                                *j,
-                                Period(
-                                    static_cast<Integer>(rounder(
-                                        (swapIndexBase_->dayCounter()
-                                             .yearFraction(*j, numeraireKnown) -
-                                         0.5 / 365) *
-                                        12.0)),
-                                    Months));
+                            Size months = std::max(
+                                1, static_cast<Integer>(((numeraireKnown - *j) / 365.25) * 12.0));
+                            while (underlyingSwap(swapIndexBase_, *j, months * Months)
+                                       ->maturityDate() < numeraireKnown)
+                                ++months;
+                            makeSwaptionCalibrationPoint(*j, months * Months);
                             done = false;
                             break;
                         }
@@ -382,7 +368,7 @@ namespace QuantLib {
                             << k.size() << ")");
                     std::vector<Real> v;
                     v.reserve(k.size());
-                    for (double j : k) {
+                    for (Real j : k) {
                         v.push_back(i->second.rawSmileSection_->volatility(j));
                     }
 
@@ -662,7 +648,7 @@ namespace QuantLib {
                     modelPut, marketVega, marketRawCall, marketRawPut;
                 for (Size j = 0; j < money.size(); j++) {
                     strikes.push_back(sec->volatilityType() == Normal ?
-                                          calibrationPoint.second.atm_ + money[j] :
+                                          Real(calibrationPoint.second.atm_ + money[j]) :
                                           money[j] * (calibrationPoint.second.atm_ + shift) -
                                               shift);
                     try {
@@ -713,7 +699,7 @@ namespace QuantLib {
         return modelOutputs_;
     }
 
-    Disposable<Array> MarkovFunctional::numeraireArray(const Time t, const Array& y) const {
+    Array MarkovFunctional::numeraireArray(const Time t, const Array& y) const {
 
         calculate();
         Array res(y.size(), termStructure()->discount(numeraireTime_, true));
@@ -752,14 +738,12 @@ namespace QuantLib {
         return res;
     }
 
-    Disposable<Array>
-    MarkovFunctional::zerobondArray(const Time T, const Time t, const Array& y) const {
+    Array MarkovFunctional::zerobondArray(const Time T, const Time t, const Array& y) const {
 
         return deflatedZerobondArray(T, t, y) * numeraireArray(t, y);
     }
 
-    Disposable<Array>
-    MarkovFunctional::deflatedZerobondArray(const Time T, const Time t, const Array& y) const {
+    Array MarkovFunctional::deflatedZerobondArray(const Time T, const Time t, const Array& y) const {
 
         calculate();
 
@@ -798,7 +782,7 @@ namespace QuantLib {
 
         Array ya(1, y);
         return numeraireArray(t, ya)[0] *
-               (yts.empty() ? 1.0
+               (yts.empty() ? Real(1.0)
                             : (yts->discount(numeraireTime()) /
                                yts->discount(t) * termStructure()->discount(t) /
                                termStructure()->discount(numeraireTime())));
@@ -813,7 +797,7 @@ namespace QuantLib {
                                : yts->discount(T, true);
         Array ya(1, y);
         return zerobondArray(T, t, ya)[0] *
-               (yts.empty() ? 1.0 : (yts->discount(T) / yts->discount(t) *
+               (yts.empty() ? Real(1.0) : (yts->discount(T) / yts->discount(t) *
                                      termStructure()->discount(t) /
                                      termStructure()->discount(T)));
     }

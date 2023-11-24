@@ -19,17 +19,34 @@
 
 #include <ql/cashflows/indexedcashflow.hpp>
 #include <ql/index.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    Real IndexedCashFlow::amount() const {
-        Real I0 = index_->fixing(baseDate_);
-        Real I1 = index_->fixing(fixingDate_);
-
-        if (growthOnly_)
-            return notional_ * (I1 / I0 - 1.0);
-        else
-            return notional_ * (I1 / I0);
+    IndexedCashFlow::IndexedCashFlow(Real notional,
+                                     ext::shared_ptr<Index> index,
+                                     const Date& baseDate,
+                                     const Date& fixingDate,
+                                     const Date& paymentDate,
+                                     bool growthOnly)
+    : notional_(notional), index_(std::move(index)), baseDate_(baseDate), fixingDate_(fixingDate),
+      paymentDate_(paymentDate), growthOnly_(growthOnly) {
+        QL_REQUIRE(index_, "no index provided");
+        registerWith(index_);
     }
 
+    Real IndexedCashFlow::amount() const {
+        calculate();
+        return amount_;
+    }
+
+    void IndexedCashFlow::performCalculations() const {
+        Real I0 = baseFixing();
+        Real I1 = indexFixing();
+
+        if (growthOnly_)
+            amount_ = notional_ * (I1 / I0 - 1.0);
+        else
+            amount_ = notional_ * (I1 / I0);
+    }
 }

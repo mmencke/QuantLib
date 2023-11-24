@@ -104,27 +104,8 @@ namespace QuantLib {
                 const std::vector<Real>& weights = std::vector<Real>(),
                 const std::vector<bool>& fixParameters = std::vector<bool>());
 
-        /*! \deprecated Use the other overload.
-                        Deprecated in version 1.18.
-        */
-        QL_DEPRECATED
-        virtual void calibrate(
-                const std::vector<ext::shared_ptr<BlackCalibrationHelper> >&,
-                OptimizationMethod& method,
-                const EndCriteria& endCriteria,
-                const Constraint& constraint = Constraint(),
-                const std::vector<Real>& weights = std::vector<Real>(),
-                const std::vector<bool>& fixParameters = std::vector<bool>());
-
         Real value(const Array& params,
                    const std::vector<ext::shared_ptr<CalibrationHelper> >&);
-
-        /*! \deprecated Use the other overload.
-                        Deprecated in version 1.18.
-        */
-        QL_DEPRECATED
-        Real value(const Array& params,
-                   const std::vector<ext::shared_ptr<BlackCalibrationHelper> >&);
 
         const ext::shared_ptr<Constraint>& constraint() const;
 
@@ -135,7 +116,7 @@ namespace QuantLib {
         const Array& problemValues() const { return problemValues_; }
 
         //! Returns array of arguments on which calibration is done
-        Disposable<Array> params() const;
+        Array params() const;
 
         virtual void setParams(const Array& params);
         Integer functionEvaluation() const { return functionEvaluation_; }
@@ -144,7 +125,7 @@ namespace QuantLib {
         virtual void generateArguments() {}
         std::vector<Parameter> arguments_;
         ext::shared_ptr<Constraint> constraint_;
-        EndCriteria::Type shortRateEndCriteria_;
+        EndCriteria::Type shortRateEndCriteria_ = EndCriteria::None;
         Array problemValues_;
         Integer functionEvaluation_;
 
@@ -153,7 +134,6 @@ namespace QuantLib {
         class PrivateConstraint;
         //! Calibration cost function class
         class CalibrationFunction;
-        friend class CalibrationFunction;
     };
 
     //! Abstract short-rate model class
@@ -183,7 +163,7 @@ namespace QuantLib {
 
     class CalibratedModel::PrivateConstraint : public Constraint {
       private:
-        class Impl :  public Constraint::Impl {
+        class Impl final : public Constraint::Impl {
           public:
             explicit Impl(const std::vector<Parameter>& arguments)
             : arguments_(arguments) {}

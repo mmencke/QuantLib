@@ -27,7 +27,7 @@
 */
 
 #include <ql/qldefines.hpp>
-#ifdef BOOST_MSVC
+#if !defined(BOOST_ALL_NO_LIB) && defined(BOOST_MSVC)
 #  include <ql/auto_link.hpp>
 #endif
 #include <ql/termstructures/yield/fittedbonddiscountcurve.hpp>
@@ -46,12 +46,6 @@
 
 using namespace std;
 using namespace QuantLib;
-
-#if defined(QL_ENABLE_SESSIONS)
-namespace QuantLib {
-    ThreadKey sessionId() { return {}; }
-}
-#endif
 
 // par-rate approximation
 Rate parRate(const YieldTermStructure& yts,
@@ -89,14 +83,13 @@ int main(int, char* []) {
         const Size numberOfBonds = 15;
         Real cleanPrice[numberOfBonds];
 
-        for (double& i : cleanPrice) {
+        for (Real& i : cleanPrice) {
             i = 100.0;
         }
 
-        std::vector< ext::shared_ptr<SimpleQuote> > quote;
-        for (double i : cleanPrice) {
-            ext::shared_ptr<SimpleQuote> cp(new SimpleQuote(i));
-            quote.push_back(cp);
+        std::vector< ext::shared_ptr<SimpleQuote>> quote;
+        for (Real i : cleanPrice) {
+            quote.push_back(ext::make_shared<SimpleQuote>(i));
         }
 
         RelinkableHandle<Quote> quoteHandle[numberOfBonds];
@@ -133,8 +126,8 @@ int main(int, char* []) {
         cout << "Bonds' settlement date: " << bondSettlementDate << endl;
         cout << "Calculating fit for 15 bonds....." << endl << endl;
 
-        std::vector<ext::shared_ptr<BondHelper> > instrumentsA;
-        std::vector<ext::shared_ptr<RateHelper> > instrumentsB;
+        std::vector<ext::shared_ptr<BondHelper>> instrumentsA;
+        std::vector<ext::shared_ptr<RateHelper>> instrumentsB;
 
         for (Size j=0; j<LENGTH(lengths); j++) {
 
@@ -144,25 +137,23 @@ int main(int, char* []) {
                               calendar, accrualConvention, accrualConvention,
                               DateGeneration::Backward, false);
 
-            ext::shared_ptr<BondHelper> helperA(
-                     new FixedRateBondHelper(quoteHandle[j],
+            auto helperA = ext::make_shared<FixedRateBondHelper>(quoteHandle[j],
                                              bondSettlementDays,
                                              100.0,
                                              schedule,
                                              std::vector<Rate>(1,coupons[j]),
                                              dc,
                                              convention,
-                                             redemption));
+                                             redemption);
 
-            ext::shared_ptr<RateHelper> helperB(
-                     new FixedRateBondHelper(quoteHandle[j],
+            auto helperB = ext::make_shared<FixedRateBondHelper>(quoteHandle[j],
                                              bondSettlementDays,
                                              100.0,
                                              schedule,
                                              std::vector<Rate>(1, coupons[j]),
                                              dc,
                                              convention,
-                                             redemption));
+                                             redemption);
             instrumentsA.push_back(helperA);
             instrumentsB.push_back(helperB);
         }
@@ -172,50 +163,46 @@ int main(int, char* []) {
         Real tolerance = 1.0e-10;
         Size max = 5000;
 
-        ext::shared_ptr<YieldTermStructure> ts0 (
-              new PiecewiseYieldCurve<Discount,LogLinear>(curveSettlementDays,
+        auto ts0 = ext::make_shared<PiecewiseYieldCurve<Discount, LogLinear>>(curveSettlementDays,
                                                           calendar,
                                                           instrumentsB,
-                                                          dc));
+                                                          dc);
 
         ExponentialSplinesFitting exponentialSplines(constrainAtZero);
 
-        ext::shared_ptr<FittedBondDiscountCurve> ts1 (
-                  new FittedBondDiscountCurve(curveSettlementDays,
+        auto ts1 = ext::make_shared<FittedBondDiscountCurve>(curveSettlementDays,
                                               calendar,
                                               instrumentsA,
                                               dc,
                                               exponentialSplines,
                                               tolerance,
-                                              max));
+                                              max);
 
         printOutput("(a) exponential splines", ts1);
 
 
         SimplePolynomialFitting simplePolynomial(3, constrainAtZero);
 
-        ext::shared_ptr<FittedBondDiscountCurve> ts2 (
-                    new FittedBondDiscountCurve(curveSettlementDays,
+        auto ts2 = ext::make_shared<FittedBondDiscountCurve>(curveSettlementDays,
                                                 calendar,
                                                 instrumentsA,
                                                 dc,
                                                 simplePolynomial,
                                                 tolerance,
-                                                max));
+                                                max);
 
         printOutput("(b) simple polynomial", ts2);
 
 
         NelsonSiegelFitting nelsonSiegel;
 
-        ext::shared_ptr<FittedBondDiscountCurve> ts3 (
-                        new FittedBondDiscountCurve(curveSettlementDays,
+        auto ts3 = ext::make_shared<FittedBondDiscountCurve>(curveSettlementDays,
                                                     calendar,
                                                     instrumentsA,
                                                     dc,
                                                     nelsonSiegel,
                                                     tolerance,
-                                                    max));
+                                                    max);
 
         printOutput("(c) Nelson-Siegel", ts3);
 
@@ -227,33 +214,31 @@ int main(int, char* []) {
                            20.0,  25.0, 30.0, 40.0, 50.0 };
 
         std::vector<Time> knotVector;
-        for (double& knot : knots) {
+        for (Real& knot : knots) {
             knotVector.push_back(knot);
         }
 
         CubicBSplinesFitting cubicBSplines(knotVector, constrainAtZero);
 
-        ext::shared_ptr<FittedBondDiscountCurve> ts4 (
-                       new FittedBondDiscountCurve(curveSettlementDays,
+        auto ts4 = ext::make_shared<FittedBondDiscountCurve>(curveSettlementDays,
                                                    calendar,
                                                    instrumentsA,
                                                    dc,
                                                    cubicBSplines,
                                                    tolerance,
-                                                   max));
+                                                   max);
 
         printOutput("(d) cubic B-splines", ts4);
 
         SvenssonFitting svensson;
 
-        ext::shared_ptr<FittedBondDiscountCurve> ts5 (
-                        new FittedBondDiscountCurve(curveSettlementDays,
+        auto ts5 = ext::make_shared<FittedBondDiscountCurve>(curveSettlementDays,
                                                     calendar,
                                                     instrumentsA,
                                                     dc,
                                                     svensson,
                                                     tolerance,
-                                                    max));
+                                                    max);
 
         printOutput("(e) Svensson", ts5);
 
@@ -264,28 +249,26 @@ int main(int, char* []) {
                                     ext::make_shared<NelsonSiegelFitting>(),
                                     discountCurve);
 
-        ext::shared_ptr<FittedBondDiscountCurve> ts6 (
-                        new FittedBondDiscountCurve(curveSettlementDays,
+        auto ts6 = ext::make_shared<FittedBondDiscountCurve>(curveSettlementDays,
                                                     calendar,
                                                     instrumentsA,
                                                     dc,
                                                     nelsonSiegelSpread,
                                                     tolerance,
-                                                    max));
+                                                    max);
 
-        printOutput("(f) Nelson-Siegel spreaded", ts6);
+        printOutput("(f) Nelson-Siegel spread", ts6);
 
         //Fixed kappa, and 7 coefficients
         ExponentialSplinesFitting exponentialSplinesFixed(constrainAtZero,7,0.02);
 
-        ext::shared_ptr<FittedBondDiscountCurve> ts7(
-                        new FittedBondDiscountCurve(curveSettlementDays,
+        auto ts7 = ext::make_shared<FittedBondDiscountCurve>(curveSettlementDays,
                                                     calendar, 
                                                     instrumentsA, 
                                                     dc, 
                                                     exponentialSplinesFixed, 
                                                     tolerance, 
-                                                    max));
+                                                    max);
 
         printOutput("(g) exponential splines, fixed kappa", ts7);
 
@@ -308,7 +291,7 @@ int main(int, char* []) {
 
         for (Size i=0; i<instrumentsA.size(); i++) {
 
-            std::vector<ext::shared_ptr<CashFlow> > cfs =
+            std::vector<ext::shared_ptr<CashFlow>> cfs =
                 instrumentsA[i]->bond()->cashflows();
 
             Size cfSize = instrumentsA[i]->bond()->cashflows().size();
@@ -345,7 +328,7 @@ int main(int, char* []) {
                  // Svensson
                  << setw(6) << fixed << setprecision(3)
                  << 100.*parRate(*ts5,keyDates,dc)  << " | "
-                 // Nelson-Siegel Spreaded
+                 // Nelson-Siegel Spread
                  << setw(6) << fixed << setprecision(3)
                  << 100.*parRate(*ts6,keyDates,dc) << " | "
                  // Exponential, fixed kappa
@@ -377,7 +360,7 @@ int main(int, char* []) {
 
         printOutput("(e) Svensson", ts5);
 
-        printOutput("(f) Nelson-Siegel spreaded", ts6);
+        printOutput("(f) Nelson-Siegel spread", ts6);
 
         printOutput("(g) exponential spline, fixed kappa", ts7);
 
@@ -398,7 +381,7 @@ int main(int, char* []) {
 
         for (Size i=0; i<instrumentsA.size(); i++) {
 
-            std::vector<ext::shared_ptr<CashFlow> > cfs =
+            std::vector<ext::shared_ptr<CashFlow>> cfs =
                 instrumentsA[i]->bond()->cashflows();
 
             Size cfSize = instrumentsA[i]->bond()->cashflows().size();
@@ -435,7 +418,7 @@ int main(int, char* []) {
                  // Svensson
                  << setw(6) << fixed << setprecision(3)
                  << 100.*parRate(*ts5,keyDates,dc) << " | "
-                 // Nelson-Siegel Spreaded
+                 // Nelson-Siegel Spread
                  << setw(6) << fixed << setprecision(3)
                  << 100.*parRate(*ts6,keyDates,dc) << " | "
                  // exponential, fixed kappa
@@ -460,89 +443,81 @@ int main(int, char* []) {
         Settings::instance().evaluationDate() = today;
         bondSettlementDate = calendar.advance(today, bondSettlementDays*Days);
 
-        ext::shared_ptr<YieldTermStructure> ts00 (
-              new PiecewiseYieldCurve<Discount,LogLinear>(curveSettlementDays,
+        auto ts00 = ext::make_shared<PiecewiseYieldCurve<Discount, LogLinear>>(curveSettlementDays,
                                                           calendar,
                                                           instrumentsB,
-                                                          dc));
+                                                          dc);
 
-        ext::shared_ptr<FittedBondDiscountCurve> ts11 (
-                  new FittedBondDiscountCurve(curveSettlementDays,
+        auto ts11 = ext::make_shared<FittedBondDiscountCurve>(curveSettlementDays,
                                               calendar,
                                               instrumentsA,
                                               dc,
                                               exponentialSplines,
                                               tolerance,
-                                              max));
+                                              max);
 
         printOutput("(a) exponential splines", ts11);
 
 
-        ext::shared_ptr<FittedBondDiscountCurve> ts22 (
-                    new FittedBondDiscountCurve(curveSettlementDays,
+        auto ts22 = ext::make_shared<FittedBondDiscountCurve>(curveSettlementDays,
                                                 calendar,
                                                 instrumentsA,
                                                 dc,
                                                 simplePolynomial,
                                                 tolerance,
-                                                max));
+                                                max);
 
         printOutput("(b) simple polynomial", ts22);
 
 
-        ext::shared_ptr<FittedBondDiscountCurve> ts33 (
-                        new FittedBondDiscountCurve(curveSettlementDays,
+        auto ts33 = ext::make_shared<FittedBondDiscountCurve>(curveSettlementDays,
                                                     calendar,
                                                     instrumentsA,
                                                     dc,
                                                     nelsonSiegel,
                                                     tolerance,
-                                                    max));
+                                                    max);
 
         printOutput("(c) Nelson-Siegel", ts33);
 
 
-        ext::shared_ptr<FittedBondDiscountCurve> ts44 (
-                       new FittedBondDiscountCurve(curveSettlementDays,
+        auto ts44 = ext::make_shared<FittedBondDiscountCurve>(curveSettlementDays,
                                                    calendar,
                                                    instrumentsA,
                                                    dc,
                                                    cubicBSplines,
                                                    tolerance,
-                                                   max));
+                                                   max);
 
         printOutput("(d) cubic B-splines", ts44);
 
-        ext::shared_ptr<FittedBondDiscountCurve> ts55 (
-                       new FittedBondDiscountCurve(curveSettlementDays,
+        auto ts55 = ext::make_shared<FittedBondDiscountCurve>(curveSettlementDays,
                                                    calendar,
                                                    instrumentsA,
                                                    dc,
                                                    svensson,
                                                    tolerance,
-                                                   max));
+                                                   max);
 
         printOutput("(e) Svensson", ts55);
 
-        ext::shared_ptr<FittedBondDiscountCurve> ts66 (
-                        new FittedBondDiscountCurve(curveSettlementDays,
+        auto ts66 = ext::make_shared<FittedBondDiscountCurve>(curveSettlementDays,
                                                     calendar,
                                                     instrumentsA,
                                                     dc,
                                                     nelsonSiegelSpread,
                                                     tolerance,
-                                                    max));
+                                                    max);
 
-        printOutput("(f) Nelson-Siegel spreaded", ts66);
+        printOutput("(f) Nelson-Siegel spread", ts66);
 
-        ext::shared_ptr<FittedBondDiscountCurve> ts77(
-                        new FittedBondDiscountCurve(curveSettlementDays, 
+        auto ts77 = ext::make_shared<FittedBondDiscountCurve>(curveSettlementDays, 
                                                     calendar, 
                                                     instrumentsA, 
                                                     dc, 
                                                     exponentialSplinesFixed, 
                                                     tolerance, 
-                                                    max));
+                                                    max);
 
         printOutput("(g) exponential, fixed kappa", ts77);
 
@@ -559,7 +534,7 @@ int main(int, char* []) {
 
         for (Size i=0; i<instrumentsA.size(); i++) {
 
-            std::vector<ext::shared_ptr<CashFlow> > cfs =
+            std::vector<ext::shared_ptr<CashFlow>> cfs =
                 instrumentsA[i]->bond()->cashflows();
 
             Size cfSize = instrumentsA[i]->bond()->cashflows().size();
@@ -596,7 +571,7 @@ int main(int, char* []) {
                  // Svensson
                  << setw(6) << fixed << setprecision(3)
                  << 100.*parRate(*ts55,keyDates,dc) << " | "
-                 // Nelson-Siegel Spreaded
+                 // Nelson-Siegel Spread
                  << setw(6) << fixed << setprecision(3)
                  << 100.*parRate(*ts66,keyDates,dc) << " | "
                  // exponential, fixed kappa
@@ -645,7 +620,7 @@ int main(int, char* []) {
 
         for (Size i=0; i<instrumentsA.size(); i++) {
 
-            std::vector<ext::shared_ptr<CashFlow> > cfs =
+            std::vector<ext::shared_ptr<CashFlow>> cfs =
                 instrumentsA[i]->bond()->cashflows();
 
             Size cfSize = instrumentsA[i]->bond()->cashflows().size();
@@ -682,7 +657,7 @@ int main(int, char* []) {
                  // Svensson
                  << setw(6) << fixed << setprecision(3)
                  << 100.*parRate(*ts55,keyDates,dc) << " | "
-                 // Nelson-Siegel Spreaded
+                 // Nelson-Siegel Spread
                  << setw(6) << fixed << setprecision(3)
                  << 100.*parRate(*ts66,keyDates,dc) << " | "
                  // exponential spline, fixed kappa

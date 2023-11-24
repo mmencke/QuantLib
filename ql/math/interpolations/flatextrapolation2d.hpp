@@ -17,7 +17,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-/*! \file 
+/*! \file flatextrapolation2d.hpp
 \brief abstract base classes for 2-D flat extrapolations
 */
 
@@ -44,7 +44,7 @@ namespace QuantLib {
           public:
             FlatExtrapolator2DImpl(ext::shared_ptr<Interpolation2D> decoratedInterpolation)
             : decoratedInterp_(std::move(decoratedInterpolation)) {
-                calculate();
+                FlatExtrapolator2DImpl::calculate();
             }
             Real xMin() const override { return decoratedInterp_->xMin(); }
             Real xMax() const override { return decoratedInterp_->xMax(); }
