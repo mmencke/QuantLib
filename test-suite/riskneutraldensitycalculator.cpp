@@ -22,7 +22,6 @@
 #include "utilities.hpp"
 #include <ql/instruments/vanillaoption.hpp>
 #include <ql/math/distributions/normaldistribution.hpp>
-#include <ql/math/functional.hpp>
 #include <ql/math/integrals/gausslobattointegral.hpp>
 #include <ql/methods/finitedifferences/utilities/bsmrndcalculator.hpp>
 #include <ql/methods/finitedifferences/utilities/cevrndcalculator.hpp>
@@ -50,8 +49,6 @@ using namespace boost::unit_test_framework;
 void RiskNeutralDensityCalculatorTest::testDensityAgainstOptionPrices() {
     BOOST_TEST_MESSAGE("Testing density against option prices...");
 
-    SavedSettings backup;
-
     const DayCounter dayCounter = Actual365Fixed();
     const Date todaysDate = Settings::instance().evaluationDate();
 
@@ -76,12 +73,12 @@ void RiskNeutralDensityCalculatorTest::testDensityAgainstOptionPrices() {
     const Time times[] = { 0.5, 1.0, 2.0 };
     const Real strikes[] = { 75.0, 100.0, 150.0 };
 
-    for (double t : times) {
+    for (Real t : times) {
         const Volatility stdDev = v * std::sqrt(t);
         const DiscountFactor df = rTS->discount(t);
         const Real fwd = s0*qTS->discount(t)/df;
 
-        for (double strike : strikes) {
+        for (Real strike : strikes) {
             const Real xs = std::log(strike);
             const BlackCalculator blackCalc(
                 Option::Put, strike, fwd, stdDev, df);
@@ -122,8 +119,6 @@ void RiskNeutralDensityCalculatorTest::testDensityAgainstOptionPrices() {
 void RiskNeutralDensityCalculatorTest::testBSMagainstHestonRND() {
     BOOST_TEST_MESSAGE("Testing Black-Scholes-Merton and Heston densities...");
 
-    SavedSettings backup;
-
     const DayCounter dayCounter = Actual365Fixed();
     const Date todaysDate = Settings::instance().evaluationDate();
 
@@ -160,8 +155,8 @@ void RiskNeutralDensityCalculatorTest::testBSMagainstHestonRND() {
     const Real strikes[] = { 7.5, 10, 15 };
     const Real probs[] = { 1e-6, 0.01, 0.5, 0.99, 1.0-1e-6 };
 
-    for (double t : times) {
-        for (double strike : strikes) {
+    for (Real t : times) {
+        for (Real strike : strikes) {
             const Real xs = std::log(strike);
 
             const Real expectedPDF = bsm.pdf(xs, t);
@@ -190,7 +185,7 @@ void RiskNeutralDensityCalculatorTest::testBSMagainstHestonRND() {
             }
         }
 
-        for (double prob : probs) {
+        for (Real prob : probs) {
             const Real expectedInvCDF = bsm.invcdf(prob, t);
             const Real calculatedInvCDF = heston.invcdf(prob, t);
 
@@ -266,7 +261,7 @@ namespace {
         const ext::shared_ptr<RiskNeutralDensityCalculator> calc_;
     };
 
-    Disposable<std::vector<Time> > adaptiveTimeGrid(
+    std::vector<Time> adaptiveTimeGrid(
         Size maxStepsPerYear, Size minStepsPerYear, Real decay, Time endTime) {
         const Time maxDt = 1.0/maxStepsPerYear;
         const Time minDt = 1.0/minStepsPerYear;
@@ -288,8 +283,6 @@ void RiskNeutralDensityCalculatorTest::testLocalVolatilityRND() {
     BOOST_TEST_MESSAGE("Testing Fokker-Planck forward equation "
                        "for local volatility process to calculate "
                        "risk neutral densities...");
-
-    SavedSettings backup;
 
     const DayCounter dayCounter = Actual365Fixed();
     const Date todaysDate = Date(28, Dec, 2012);
@@ -433,7 +426,7 @@ void RiskNeutralDensityCalculatorTest::testLocalVolatilityRND() {
 
         const ext::shared_ptr<Exercise> exercise(new EuropeanExercise(maturity));
 
-        for (double strike : strikes) {
+        for (Real strike : strikes) {
             const ext::shared_ptr<StrikedTypePayoff> payoff(new PlainVanillaPayoff(
                 (strike > spot->value()) ? Option::Call : Option::Put, strike));
 
@@ -563,8 +556,6 @@ void RiskNeutralDensityCalculatorTest::testBlackScholesWithSkew() {
         "Testing probability density for a BSM process "
         "with strike dependent volatility vs local volatility...");
 
-    SavedSettings backup;
-
     const Date todaysDate = Date(3, Oct, 2016);
     Settings::instance().evaluationDate() = todaysDate;
 
@@ -614,7 +605,7 @@ void RiskNeutralDensityCalculatorTest::testBlackScholesWithSkew() {
 
     const Real strikes[] = { 85, 75, 90, 110, 125, 150 };
 
-    for (double strike : strikes) {
+    for (Real strike : strikes) {
         const Real logStrike = std::log(strike);
 
         const Real expected = hestonCalc.cdf(logStrike, maturity);
@@ -646,7 +637,7 @@ void RiskNeutralDensityCalculatorTest::testBlackScholesWithSkew() {
         }
     }
 
-    for (double strike : strikes) {
+    for (Real strike : strikes) {
         const Real logStrike = std::log(strike);
 
         const Real expected = hestonCalc.pdf(logStrike, maturity)/strike;
@@ -680,7 +671,7 @@ void RiskNeutralDensityCalculatorTest::testBlackScholesWithSkew() {
     }
 
     const Real quantiles[] = { 0.05, 0.25, 0.5, 0.75, 0.95 };
-    for (double quantile : quantiles) {
+    for (Real quantile : quantiles) {
         const Real expected = std::exp(hestonCalc.invcdf(quantile, maturity));
         const Real calculatedGBSM = gbsmCalc.invcdf(quantile, maturity);
 
@@ -738,7 +729,7 @@ void RiskNeutralDensityCalculatorTest::testMassAtZeroCEVProcessRND() {
         const Real ax = 15.0*std::sqrt(t)*alpha*std::pow(f0, beta);
 
         const Real calculated = GaussLobattoIntegral(1000, 1e-8)(
-            [&](Real _x) { return calculator->pdf(_x, t); }, std::max(QL_EPSILON, f0-ax), f0+ax) +
+            [&](Real _x) -> Real { return calculator->pdf(_x, t); }, std::max(QL_EPSILON, f0-ax), f0+ax) +
             calculator->massAtZero(t);
 
         if (std::fabs(calculated - 1.0) > tol) {

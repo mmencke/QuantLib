@@ -107,7 +107,7 @@ namespace QuantLib {
             strikes.push_back(strikes.back() + dk_);
             break;
           case Option::Put:
-            std::sort(strikes.begin(), strikes.end(), std::greater<Real>());
+            std::sort(strikes.begin(), strikes.end(), std::greater<>());
             strikes.push_back(std::max(strikes.back() - dk_, 0.0));
             break;
           default:
@@ -135,10 +135,9 @@ namespace QuantLib {
             ext::shared_ptr<StrikedTypePayoff> payoff(
                                             new PlainVanillaPayoff(type, *k));
             if ( k == strikes.begin() )
-                optionWeights.push_back(std::make_pair(payoff,slope));
+                optionWeights.emplace_back(payoff,slope);
             else
-                optionWeights.push_back(
-                                   std::make_pair(payoff, slope - prevSlope));
+                optionWeights.emplace_back(payoff, slope - prevSlope);
             prevSlope = slope;
         }
     }

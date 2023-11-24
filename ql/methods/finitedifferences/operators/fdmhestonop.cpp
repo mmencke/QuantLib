@@ -42,12 +42,9 @@ namespace QuantLib {
         // on the boundary s_min and s_max the second derivative
         // d^2V/dS^2 is zero and due to Ito's Lemma the variance term
         // in the drift should vanish.
-        ext::shared_ptr<FdmLinearOpLayout> layout = mesher_->layout();
-        FdmLinearOpIterator endIter = layout->end();
-        for (FdmLinearOpIterator iter = layout->begin(); iter != endIter;
-            ++iter) {
+        for (const auto& iter : *mesher_->layout()) {
             if (   iter.coordinates()[0] == 0
-                || iter.coordinates()[0] == layout->dim()[0]-1) {
+                || iter.coordinates()[0] == mesher_->layout()->dim()[0]-1) {
                 varianceValues_[iter.index()] = 0.0;
             }
         }
@@ -72,10 +69,9 @@ namespace QuantLib {
         }
     }
 
-    Disposable<Array> FdmHestonEquityPart::getLeverageFctSlice(Time t1, Time t2)
-    const {
-        const ext::shared_ptr<FdmLinearOpLayout> layout=mesher_->layout();
-        Array v(layout->size(), 1.0);
+    Array FdmHestonEquityPart::getLeverageFctSlice(Time t1, Time t2) const {
+
+        Array v(mesher_->layout()->size(), 1.0);
 
         if (!leverageFct_) {
             return v;
@@ -83,9 +79,7 @@ namespace QuantLib {
         const Real t = 0.5*(t1+t2);
         const Time time = std::min(leverageFct_->maxTime(), t);
 
-        const FdmLinearOpIterator endIter = layout->end();
-        for (FdmLinearOpIterator iter = layout->begin();
-             iter!=endIter; ++iter) {
+        for (const auto& iter : *mesher_->layout()) {
             const Size nx = iter.coordinates()[0];
 
             if (iter.coordinates()[1] == 0) {
@@ -155,13 +149,13 @@ namespace QuantLib {
         return 2;
     }
 
-    Disposable<Array> FdmHestonOp::apply(const Array& u) const {
+    Array FdmHestonOp::apply(const Array& u) const {
         return dyMap_.getMap().apply(u) + dxMap_.getMap().apply(u)
               + dxMap_.getL()*correlationMap_.apply(u);
     }
 
-    Disposable<Array> FdmHestonOp::apply_direction(Size direction,
-                                                   const Array& r) const {
+    Array FdmHestonOp::apply_direction(Size direction,
+                                       const Array& r) const {
         if (direction == 0)
             return dxMap_.getMap().apply(r);
         else if (direction == 1)
@@ -170,13 +164,12 @@ namespace QuantLib {
             QL_FAIL("direction too large");
     }
 
-    Disposable<Array> FdmHestonOp::apply_mixed(const Array& r) const {
+    Array FdmHestonOp::apply_mixed(const Array& r) const {
         return dxMap_.getL()*correlationMap_.apply(r);
     }
 
-    Disposable<Array>
-        FdmHestonOp::solve_splitting(Size direction,
-                                     const Array& r, Real a) const {
+    Array FdmHestonOp::solve_splitting(Size direction,
+                                       const Array& r, Real a) const {
 
         if (direction == 0) {
             return dxMap_.getMap().solve_splitting(r, a, 1.0);
@@ -188,22 +181,16 @@ namespace QuantLib {
             QL_FAIL("direction too large");
     }
 
-    Disposable<Array>
-        FdmHestonOp::preconditioner(const Array& r, Real dt) const {
-
+    Array FdmHestonOp::preconditioner(const Array& r, Real dt) const {
         return solve_splitting(1, solve_splitting(0, r, dt), dt) ;
     }
 
-#if !defined(QL_NO_UBLAS_SUPPORT)
-    Disposable<std::vector<SparseMatrix> >
-    FdmHestonOp::toMatrixDecomp() const {
-        std::vector<SparseMatrix> retVal(3);
-
-        retVal[0] = dxMap_.getMap().toMatrix();
-        retVal[1] = dyMap_.getMap().toMatrix();
-        retVal[2] = correlationMap_.toMatrix();
-
-        return retVal;
+    std::vector<SparseMatrix> FdmHestonOp::toMatrixDecomp() const {
+        return {
+            dxMap_.getMap().toMatrix(),
+            dyMap_.getMap().toMatrix(),
+            correlationMap_.toMatrix()
+        };
     }
-#endif
+
 }

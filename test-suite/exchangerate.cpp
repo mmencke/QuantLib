@@ -17,7 +17,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "exchangerate.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/exchangerate.hpp>
 #include <ql/currencies/europe.hpp>
@@ -28,7 +28,11 @@
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-void ExchangeRateTest::testDirect() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(ExchangeRateTest)
+
+BOOST_AUTO_TEST_CASE(testDirect) {
 
     BOOST_TEST_MESSAGE("Testing direct exchange rates...");
 
@@ -39,7 +43,7 @@ void ExchangeRateTest::testDirect() {
     Money m1 = 50000.0 * EUR;
     Money m2 = 100000.0 * USD;
 
-    Money::conversionType = Money::NoConversion;
+    Money::Settings::instance().conversionType() = Money::NoConversion;
 
     Money calculated = eur_usd.exchange(m1);
     Money expected(m1.value()*eur_usd.rate(), USD);
@@ -60,7 +64,7 @@ void ExchangeRateTest::testDirect() {
     }
 }
 
-void ExchangeRateTest::testDerived() {
+BOOST_AUTO_TEST_CASE(testDerived) {
 
     BOOST_TEST_MESSAGE("Testing derived exchange rates...");
 
@@ -74,7 +78,7 @@ void ExchangeRateTest::testDerived() {
     Money m1 = 50000.0 * GBP;
     Money m2 = 100000.0 * USD;
 
-    Money::conversionType = Money::NoConversion;
+    Money::Settings::instance().conversionType() = Money::NoConversion;
 
     Money calculated = derived.exchange(m1);
     Money expected(m1.value()*eur_usd.rate()/eur_gbp.rate(), USD);
@@ -95,7 +99,7 @@ void ExchangeRateTest::testDerived() {
     }
 }
 
-void ExchangeRateTest::testDirectLookup() {
+BOOST_AUTO_TEST_CASE(testDirectLookup) {
 
     BOOST_TEST_MESSAGE("Testing lookup of direct exchange rates...");
 
@@ -112,7 +116,7 @@ void ExchangeRateTest::testDirectLookup() {
     Money m1 = 50000.0 * EUR;
     Money m2 = 100000.0 * USD;
 
-    Money::conversionType = Money::NoConversion;
+    Money::Settings::instance().conversionType() = Money::NoConversion;
 
     ExchangeRate eur_usd = rateManager.lookup(EUR, USD,
                                               Date(4,August,2004),
@@ -165,7 +169,7 @@ void ExchangeRateTest::testDirectLookup() {
     }
 }
 
-void ExchangeRateTest::testTriangulatedLookup() {
+BOOST_AUTO_TEST_CASE(testTriangulatedLookup) {
 
     BOOST_TEST_MESSAGE("Testing lookup of triangulated exchange rates...");
 
@@ -182,7 +186,7 @@ void ExchangeRateTest::testTriangulatedLookup() {
     Money m1 = 50000000.0 * ITL;
     Money m2 = 100000.0 * USD;
 
-    Money::conversionType = Money::NoConversion;
+    Money::Settings::instance().conversionType() = Money::NoConversion;
 
     ExchangeRate itl_usd = rateManager.lookup(ITL, USD,
                                               Date(4,August,2004));
@@ -231,7 +235,7 @@ void ExchangeRateTest::testTriangulatedLookup() {
     }
 }
 
-void ExchangeRateTest::testSmartLookup() {
+BOOST_AUTO_TEST_CASE(testSmartLookup) {
 
     BOOST_TEST_MESSAGE("Testing lookup of derived exchange rates...");
 
@@ -273,7 +277,7 @@ void ExchangeRateTest::testSmartLookup() {
     Money m5 = 100000.0 * SEK;
     Money m6 = 100000.0 * JPY;
 
-    Money::conversionType = Money::NoConversion;
+    Money::Settings::instance().conversionType() = Money::NoConversion;
 
     // two-rate chain
 
@@ -374,13 +378,6 @@ void ExchangeRateTest::testSmartLookup() {
     }
 }
 
-test_suite* ExchangeRateTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Exchange-rate tests");
-    suite->add(QUANTLIB_TEST_CASE(&ExchangeRateTest::testDirect));
-    suite->add(QUANTLIB_TEST_CASE(&ExchangeRateTest::testDerived));
-    suite->add(QUANTLIB_TEST_CASE(&ExchangeRateTest::testDirectLookup));
-    suite->add(QUANTLIB_TEST_CASE(&ExchangeRateTest::testTriangulatedLookup));
-    suite->add(QUANTLIB_TEST_CASE(&ExchangeRateTest::testSmartLookup));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE_END()

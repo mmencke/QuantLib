@@ -124,8 +124,6 @@ namespace {
 void MCLongstaffSchwartzEngineTest::testAmericanOption() {
     BOOST_TEST_MESSAGE("Testing Monte-Carlo pricing of American options...");
 
-    SavedSettings backup;
-
     // most of the example taken from the EquityOption.cpp
     const Option::Type type(Option::Put);
     const Real underlying = 36;
@@ -161,7 +159,7 @@ void MCLongstaffSchwartzEngineTest::testAmericanOption() {
     expectedExProb[1][1] = 0.67569; // (price: 5.764)
     expectedExProb[1][2] = 0.65562; // (price: 7.138)
 
-    LsmBasisSystem::PolynomType polynomTypes[]
+    LsmBasisSystem::PolynomialType polynomialTypes[]
         = { LsmBasisSystem::Monomial, LsmBasisSystem::Laguerre,
             LsmBasisSystem::Hermite, LsmBasisSystem::Hyperbolic,
             LsmBasisSystem::Chebyshev2nd };
@@ -192,12 +190,10 @@ void MCLongstaffSchwartzEngineTest::testAmericanOption() {
                   .withAntitheticVariate()
                   .withAbsoluteTolerance(0.02)
                   .withSeed(42)
-                  .withPolynomOrder(3)
-                  .withBasisSystem(
-                       polynomTypes[0*(i*3+j)%LENGTH(polynomTypes)]);
+                  .withPolynomialOrder(3)
+                  .withBasisSystem(polynomialTypes[0*(i*3+j)%LENGTH(polynomialTypes)]);
 
             americanOption.setPricingEngine(mcengine);
-            // FLOATING_POINT_EXCEPTION
             const Real calculated = americanOption.NPV();
             const Real errorEstimate = americanOption.errorEstimate();
             const Real exerciseProbability =
@@ -233,8 +229,6 @@ void MCLongstaffSchwartzEngineTest::testAmericanMaxOption() {
     // by Paul Glasserman, 2004 Springer Verlag, p. 462
 
     BOOST_TEST_MESSAGE("Testing Monte-Carlo pricing of American max options...");
-
-    SavedSettings backup;
 
     // most of the example taken from the EquityOption.cpp
     const Option::Type type(Option::Call);

@@ -1,6 +1,4 @@
-# cpp files, this list is maintained manually
-
-set(QuantLib-Test_SRC
+set(QL_TEST_SOURCES
     americanoption.cpp
     amortizingbond.cpp
     andreasenhugevolatilityinterpl.cpp
@@ -10,12 +8,14 @@ set(QuantLib-Test_SRC
     autocovariances.cpp
     barrieroption.cpp
     basismodels.cpp
+    basisswapratehelpers.cpp
     basketoption.cpp
     batesmodel.cpp
     bermudanswaption.cpp
     binaryoption.cpp
     blackdeltacalculator.cpp
     blackformula.cpp
+    bondforward.cpp
     bonds.cpp
     brownianbridge.cpp
     businessdayconventions.cpp
@@ -30,6 +30,7 @@ set(QuantLib-Test_SRC
     chooseroption.cpp
     cliquetoption.cpp
     cms.cpp
+    cms_normal.cpp
     cmsspread.cpp
     commodityunitofmeasure.cpp
     compiledboostversion.cpp
@@ -39,6 +40,7 @@ set(QuantLib-Test_SRC
     creditdefaultswap.cpp
     creditriskplus.cpp
     crosscurrencyratehelpers.cpp
+    currency.cpp
     curvestates.cpp
     dates.cpp
     daycounters.cpp
@@ -49,6 +51,9 @@ set(QuantLib-Test_SRC
     dividendoption.cpp
     doublebarrieroption.cpp
     doublebinaryoption.cpp
+    equitycashflow.cpp
+    equityindex.cpp
+    equitytotalreturnswap.cpp
     europeanoption.cpp
     everestoption.cpp
     exchangerate.cpp
@@ -91,7 +96,6 @@ set(QuantLib-Test_SRC
     linearleastsquaresregression.cpp
     lookbackoptions.cpp
     lowdiscrepancysequences.cpp
-    main.cpp
     margrabeoption.cpp
     marketmodel.cpp
     marketmodel_cms.cpp
@@ -114,6 +118,7 @@ set(QuantLib-Test_SRC
     operators.cpp
     optimizers.cpp
     optionletstripper.cpp
+    overnightindexedcoupon.cpp
     overnightindexedswap.cpp
     pagodaoption.cpp
     partialtimebarrieroption.cpp
@@ -121,6 +126,7 @@ set(QuantLib-Test_SRC
     period.cpp
     piecewiseyieldcurve.cpp
     piecewisezerospreadedtermstructure.cpp
+    quantlibglobalfixture.cpp
     quantlibtestsuite.cpp
     quantooption.cpp
     quotes.cpp
@@ -135,10 +141,12 @@ set(QuantLib-Test_SRC
     shortratemodels.cpp
     sofrfutures.cpp
     solvers.cpp
+    speedlevel.cpp
     spreadoption.cpp
     squarerootclvmodel.cpp
     stats.cpp
     subperiodcoupons.cpp
+    svivolatility.cpp
     swap.cpp
     swapforwardmappings.cpp
     swaption.cpp
@@ -160,102 +168,12 @@ set(QuantLib-Test_SRC
     varianceswaps.cpp
     volatilitymodels.cpp
     vpp.cpp
+    xoshiro256starstar.cpp
     zabr.cpp
+    zerocouponswap.cpp
 )
 
-# hpp files, this list is maintained manually
-
-set(QuantLib-Test_HDR
-    americanoption.hpp
-    amortizingbond.hpp
-    andreasenhugevolatilityinterpl.hpp
-    array.hpp
-    asianoptions.hpp
-    assetswap.hpp
-    autocovariances.hpp
-    barrieroption.hpp
-    basismodels.hpp
-    basketoption.hpp
-    batesmodel.hpp
-    bermudanswaption.hpp
-    binaryoption.hpp
-    blackdeltacalculator.hpp
-    blackformula.hpp
-    bonds.hpp
-    brownianbridge.hpp
-    businessdayconventions.hpp
-    calendars.hpp
-    callablebonds.hpp
-    capfloor.hpp
-    capflooredcoupon.hpp
-    cashflows.hpp
-    catbonds.hpp
-    cdo.hpp
-    cdsoption.hpp
-    chooseroption.hpp
-    cliquetoption.hpp
-    cms.hpp
-    cmsspread.hpp
-    commodityunitofmeasure.hpp
-    compiledboostversion.hpp
-    compoundoption.hpp
-    convertiblebonds.hpp
-    covariance.hpp
-    creditdefaultswap.hpp
-    creditriskplus.hpp
-    crosscurrencyratehelpers.hpp
-    curvestates.hpp
-    dates.hpp
-    daycounters.hpp
-    defaultprobabilitycurves.hpp
-    digitalcoupon.hpp
-    digitaloption.hpp
-    distributions.hpp
-    dividendoption.hpp
-    doublebarrieroption.hpp
-    doublebinaryoption.hpp
-    europeanoption.hpp
-    everestoption.hpp
-    exchangerate.hpp
-    extendedtrees.hpp
-    extensibleoptions.hpp
-    fastfouriertransform.hpp
-    fdcev.hpp
-    fdcir.hpp
-    fdheston.hpp
-    fdmlinearop.hpp
-    fdsabr.hpp
-    fittedbonddiscountcurve.hpp
-    forwardoption.hpp
-    forwardrateagreement.hpp
-    functions.hpp
-    garch.hpp
-    gaussianquadratures.hpp
-    gjrgarchmodel.hpp
-    gsr.hpp
-    hestonmodel.hpp
-    hestonslvmodel.hpp
-    himalayaoption.hpp
-    hybridhestonhullwhiteprocess.hpp
-    indexes.hpp
-    inflation.hpp
-    inflationcapfloor.hpp
-    inflationcapflooredcoupon.hpp
-    inflationcpibond.hpp
-    inflationcpicapfloor.hpp
-    inflationcpiswap.hpp
-    inflationvolatility.hpp
-    instruments.hpp
-    integrals.hpp
-    interestrates.hpp
-    interpolations.hpp
-    jumpdiffusion.hpp
-    lazyobject.hpp
-    libormarketmodel.hpp
-    libormarketmodelprocess.hpp
-    linearleastsquaresregression.hpp
-    lookbackoptions.hpp
-    lowdiscrepancysequences.hpp
+set(QL_TEST_HEADERS
     margrabeoption.hpp
     marketmodel.hpp
     marketmodel_cms.hpp
@@ -278,6 +196,7 @@ set(QuantLib-Test_HDR
     operators.hpp
     optimizers.hpp
     optionletstripper.hpp
+    overnightindexedcoupon.hpp
     overnightindexedswap.hpp
     pagodaoption.hpp
     paralleltestrunner.hpp
@@ -286,6 +205,7 @@ set(QuantLib-Test_HDR
     period.hpp
     piecewiseyieldcurve.hpp
     piecewisezerospreadedtermstructure.hpp
+    quantlibglobalfixture.hpp
     quantooption.hpp
     quotes.hpp
     rangeaccrual.hpp
@@ -304,6 +224,7 @@ set(QuantLib-Test_HDR
     squarerootclvmodel.hpp
     stats.hpp
     subperiodcoupons.hpp
+    svivolatility.hpp
     swap.hpp
     swapforwardmappings.hpp
     swaption.hpp
@@ -315,6 +236,7 @@ set(QuantLib-Test_HDR
     timegrid.hpp
     timeseries.hpp
     tqreigendecomposition.hpp
+    toplevelfixture.hpp
     tracing.hpp
     transformedgrid.hpp
     twoassetbarrieroption.hpp
@@ -326,51 +248,87 @@ set(QuantLib-Test_HDR
     varianceswaps.hpp
     volatilitymodels.hpp
     vpp.hpp
+    xoshiro256starstar.hpp
     zabr.hpp
+    zerocouponswap.hpp
 )
 
-set(BENCHMARK_FILES 
-    main.cpp 
+set(QL_BENCHMARK_SOURCES
     quantlibbenchmark.cpp
     
-    americanoption.cpp                  americanoption.hpp
-    asianoptions.cpp                    asianoptions.hpp
-    barrieroption.cpp                   barrieroption.hpp
-    basketoption.cpp                    basketoption.hpp
-    batesmodel.cpp                      batesmodel.hpp
-    convertiblebonds.cpp                convertiblebonds.hpp
-    digitaloption.cpp                   digitaloption.hpp
-    dividendoption.cpp                  dividendoption.hpp
-    europeanoption.cpp                  europeanoption.hpp
-    fdheston.cpp                        fdheston.hpp
-    hestonmodel.cpp                     hestonmodel.hpp
-    interpolations.cpp                  interpolations.hpp
-    jumpdiffusion.cpp                   jumpdiffusion.hpp
-    lowdiscrepancysequences.cpp         lowdiscrepancysequences.hpp
+    americanoption.cpp
+    asianoptions.cpp
+    barrieroption.cpp
+    basketoption.cpp
+    batesmodel.cpp
+    convertiblebonds.cpp
+    digitaloption.cpp
+    dividendoption.cpp
+    europeanoption.cpp
+    fdheston.cpp
+    hestonmodel.cpp
+    interpolations.cpp
+    jumpdiffusion.cpp
+    lowdiscrepancysequences.cpp
     marketmodel_cms.cpp                 marketmodel_cms.hpp
     marketmodel_smm.cpp                 marketmodel_smm.hpp
     quantooption.cpp                    quantooption.hpp
+    quantlibglobalfixture.cpp			quantlibglobalfixture.hpp
     riskstats.cpp                       riskstats.hpp
     shortratemodels.cpp                 shortratemodels.hpp
-
+	speedlevel.cpp						speedlevel.hpp
     utilities.cpp                       utilities.hpp
                                         swaptionvolstructuresutilities.hpp
 )
 
-if (USE_BOOST_DYNAMIC_LIBRARIES)
-    add_definitions(-DBOOST_TEST_DYN_LINK)
+if (QL_BUILD_TEST_SUITE OR QL_BUILD_BENCHMARK)
+    add_library(ql_unit_test_main STATIC main.cpp)
+    target_include_directories(ql_unit_test_main PRIVATE
+        ${PROJECT_BINARY_DIR}
+        ${PROJECT_SOURCE_DIR})
+    target_include_directories(ql_unit_test_main SYSTEM PRIVATE
+        ${Boost_INCLUDE_DIRS})
+    if (NOT Boost_USE_STATIC_LIBS)
+        target_compile_definitions(ql_unit_test_main PRIVATE BOOST_TEST_DYN_LINK)
+    endif()
 endif()
 
-find_package (Boost REQUIRED COMPONENTS unit_test_framework)
+if (QL_BUILD_TEST_SUITE)
+    add_executable(ql_test_suite ${QL_TEST_SOURCES} ${QL_TEST_HEADERS})
+    set_target_properties(ql_test_suite PROPERTIES OUTPUT_NAME "quantlib-test-suite")
+    if (NOT Boost_USE_STATIC_LIBS)
+        target_compile_definitions(ql_test_suite PRIVATE BOOST_ALL_DYN_LINK BOOST_TEST_DYN_LINK)
+    endif()
+    target_link_libraries(ql_test_suite PRIVATE
+        ql_library
+        ql_unit_test_main
+        ${QL_THREAD_LIBRARIES})
+    if(MSVC AND CMAKE_UNITY_BUILD)
+        # for Unity builds, we need to add /bigobj
+        target_compile_options(ql_test_suite PRIVATE "/bigobj")
+    endif()
+    if (QL_INSTALL_TEST_SUITE)
+        install(TARGETS ql_test_suite RUNTIME DESTINATION ${QL_INSTALL_BINDIR})
+    endif()
+    add_test(NAME quantlib_test_suite COMMAND ql_test_suite --log_level=message)
+endif()
 
-set (TEST quantlib-test-suite)
-add_executable (${TEST} ${QuantLib-Test_SRC} ${QuantLib-Test_HDR})
-target_link_libraries (${TEST} ${QL_LINK_LIBRARY} ${Boost_LIBRARIES})
-set_property(TARGET ${TEST} PROPERTY PROJECT_LABEL "testsuite")
-
-set (BENCHMARK quantlib-benchmark)
-add_executable (${BENCHMARK} ${BENCHMARK_FILES})
-target_link_libraries (${BENCHMARK} ${QL_LINK_LIBRARY} ${Boost_LIBRARIES})
-set_property(TARGET ${BENCHMARK} PROPERTY PROJECT_LABEL "benchmark")
-
-add_test (${TEST} ${TEST})
+IF (QL_BUILD_BENCHMARK)
+    add_executable(ql_benchmark ${QL_BENCHMARK_SOURCES})
+    set_target_properties(ql_benchmark PROPERTIES OUTPUT_NAME "quantlib-benchmark")
+    set_source_files_properties(quantlibbenchmark.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION true)
+    if (NOT Boost_USE_STATIC_LIBS)
+        target_compile_definitions(ql_benchmark PRIVATE BOOST_ALL_DYN_LINK BOOST_TEST_DYN_LINK)
+    endif()
+    target_link_libraries(ql_benchmark PRIVATE
+        ql_library
+        ql_unit_test_main
+        ${QL_THREAD_LIBRARIES})
+    if(MSVC AND CMAKE_UNITY_BUILD)
+        # for Unity builds, we need to add /bigobj
+        target_compile_options(ql_benchmark PRIVATE "/bigobj")
+    endif()
+    if (QL_INSTALL_BENCHMARK)
+        install(TARGETS ql_benchmark RUNTIME DESTINATION ${QL_INSTALL_BINDIR})
+    endif()
+endif()

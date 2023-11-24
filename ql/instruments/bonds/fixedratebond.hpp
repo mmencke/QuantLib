@@ -60,45 +60,10 @@ namespace QuantLib {
                       BusinessDayConvention exCouponConvention = Unadjusted,
                       bool exCouponEndOfMonth = false,
                       const DayCounter& firstPeriodDayCounter = DayCounter());
-        /*! simple annual compounding coupon rates
-            with internal schedule calculation */
-        FixedRateBond(Natural settlementDays,
-                      const Calendar& couponCalendar,
-                      Real faceAmount,
-                      const Date& startDate,
-                      const Date& maturityDate,
-                      const Period& tenor,
-                      const std::vector<Rate>& coupons,
-                      const DayCounter& accrualDayCounter,
-                      BusinessDayConvention accrualConvention = Following,
-                      BusinessDayConvention paymentConvention = Following,
-                      Real redemption = 100.0,
-                      const Date& issueDate = Date(),
-                      const Date& stubDate = Date(),
-                      DateGeneration::Rule rule = DateGeneration::Backward,
-                      bool endOfMonth = false,
-                      const Calendar& paymentCalendar = Calendar(),
-                      const Period& exCouponPeriod = Period(),
-                      const Calendar& exCouponCalendar = Calendar(),
-                      BusinessDayConvention exCouponConvention = Unadjusted,
-                      bool exCouponEndOfMonth = false,
-                      const DayCounter& firstPeriodDayCounter = DayCounter());
-        //! generic compounding and frequency InterestRate coupons
-        FixedRateBond(Natural settlementDays,
-                      Real faceAmount,
-                      const Schedule& schedule,
-                      const std::vector<InterestRate>& coupons,
-                      BusinessDayConvention paymentConvention = Following,
-                      Real redemption = 100.0,
-                      const Date& issueDate = Date(),
-                      const Calendar& paymentCalendar = Calendar(),
-                      const Period& exCouponPeriod = Period(),
-                      const Calendar& exCouponCalendar = Calendar(),
-                      BusinessDayConvention exCouponConvention = Unadjusted,
-                      bool exCouponEndOfMonth = false);
+
         Frequency frequency() const { return frequency_; }
-        const DayCounter& dayCounter() const {return dayCounter_;}
-        const DayCounter& firstPeriodDayCounter() const {return firstPeriodDayCounter_;}
+        const DayCounter& dayCounter() const { return dayCounter_; }
+        const DayCounter& firstPeriodDayCounter() const { return firstPeriodDayCounter_; }
       protected:
         Frequency frequency_;
         DayCounter dayCounter_;

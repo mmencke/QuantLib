@@ -17,8 +17,8 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-/*! \file eonia.hpp
-    \brief %Eonia index
+/*! \file sonia.hpp
+    \brief %Sonia index
 */
 
 #ifndef quantlib_sonia_hpp
@@ -31,8 +31,7 @@ namespace QuantLib {
     //! %Sonia (Sterling Overnight Index Average) rate.
     class Sonia : public OvernightIndex {
       public:
-        explicit Sonia(const Handle<YieldTermStructure>& h =
-                                    Handle<YieldTermStructure>());
+        explicit Sonia(const Handle<YieldTermStructure>& h = {});
     };
 
 }

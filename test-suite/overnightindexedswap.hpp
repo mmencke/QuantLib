@@ -37,6 +37,8 @@ class OvernightIndexedSwapTest {
     static void testBootstrapWithTelescopicDatesAndArithmeticAverage();
     static void testSeasonedSwaps();
     static void testBootstrapRegression();
+    static void test131BootstrapRegression();
+    static void testConstructorsAndNominals();
     static boost::unit_test_framework::test_suite* suite();
 };
 

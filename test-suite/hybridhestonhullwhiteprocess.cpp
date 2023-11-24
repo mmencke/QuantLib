@@ -17,9 +17,9 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
+#include "speedlevel.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-#include "hybridhestonhullwhiteprocess.hpp"
-
 #include <ql/time/schedule.hpp>
 #include <ql/time/calendars/target.hpp>
 #include <ql/quotes/simplequote.hpp>
@@ -27,6 +27,7 @@
 #include <ql/instruments/impliedvolatility.hpp>
 #include <ql/processes/blackscholesprocess.hpp>
 #include <ql/processes/hybridhestonhullwhiteprocess.hpp>
+#include <ql/math/functional.hpp>
 #include <ql/math/randomnumbers/rngtraits.hpp>
 #include <ql/math/randomnumbers/sobolbrownianbridgersg.hpp>
 #include <ql/math/optimization/simplex.hpp>
@@ -55,11 +56,13 @@
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-void HybridHestonHullWhiteProcessTest::testBsmHullWhiteEngine() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(HybridHestonHullWhiteProcessTest)
+
+BOOST_AUTO_TEST_CASE(testBsmHullWhiteEngine) {
     BOOST_TEST_MESSAGE("Testing European option pricing for a BSM process"
                        " with one-factor Hull-White model...");
-
-    SavedSettings backup;
 
     DayCounter dc = Actual365Fixed();
 
@@ -151,11 +154,9 @@ void HybridHestonHullWhiteProcessTest::testBsmHullWhiteEngine() {
    }
 }
 
-void HybridHestonHullWhiteProcessTest::testCompareBsmHWandHestonHW() {
+BOOST_AUTO_TEST_CASE(testCompareBsmHWandHestonHW) {
     BOOST_TEST_MESSAGE("Comparing European option pricing for a BSM process"
                        " with one-factor Hull-White model...");
-
-    SavedSettings backup;
 
     DayCounter dc = Actual365Fixed();
 
@@ -170,7 +171,6 @@ void HybridHestonHullWhiteProcessTest::testCompareBsmHWandHestonHW() {
 
     for (Size i=0; i <= 40; ++i) {
         dates.push_back(today+Period(i, Years));
-        // FLOATING_POINT_EXCEPTION
         rates.push_back(0.01 + 0.0002*std::exp(std::sin(i/4.0)));
         divRates.push_back(0.02 + 0.0001*std::exp(std::sin(i/5.0)));
     }
@@ -212,7 +212,7 @@ void HybridHestonHullWhiteProcessTest::testCompareBsmHWandHestonHW() {
     const Option::Type types[] = { Option::Put, Option::Call };
 
     for (auto type : types) {
-        for (double j : strike) {
+        for (Real j : strike) {
             for (unsigned long l : maturity) {
                 const Date maturityDate = today + Period(l, Years);
 
@@ -245,10 +245,8 @@ void HybridHestonHullWhiteProcessTest::testCompareBsmHWandHestonHW() {
     }
 }
 
-void HybridHestonHullWhiteProcessTest::testZeroBondPricing() {
+BOOST_AUTO_TEST_CASE(testZeroBondPricing) {
     BOOST_TEST_MESSAGE("Testing Monte-Carlo zero bond pricing...");
-
-    SavedSettings backup;
 
     DayCounter dc = Actual360();
     const Date today = Date::todaysDate();
@@ -362,10 +360,8 @@ void HybridHestonHullWhiteProcessTest::testZeroBondPricing() {
     }
 }
 
-void HybridHestonHullWhiteProcessTest::testMcVanillaPricing() {
+BOOST_AUTO_TEST_CASE(testMcVanillaPricing) {
     BOOST_TEST_MESSAGE("Testing Monte-Carlo vanilla option pricing...");
-
-    SavedSettings backup;
 
     DayCounter dc = Actual360();
     const Date today = Date::todaysDate();
@@ -380,7 +376,6 @@ void HybridHestonHullWhiteProcessTest::testMcVanillaPricing() {
 
     for (Size i=0; i <= 40; ++i) {
         dates.push_back(today+Period(i, Years));
-        // FLOATING_POINT_EXCEPTION
         rates.push_back(0.03 + 0.0003*std::exp(std::sin(i/4.0)));
         divRates.push_back(0.02 + 0.0001*std::exp(std::sin(i/5.0)));
     }
@@ -408,8 +403,8 @@ void HybridHestonHullWhiteProcessTest::testMcVanillaPricing() {
     const Real corr[] = {-0.9, -0.5, 0.0, 0.5, 0.9 };
     const Real strike[] = { 100 };
 
-    for (double i : corr) {
-        for (double j : strike) {
+    for (Real i : corr) {
+        for (Real j : strike) {
             ext::shared_ptr<HybridHestonHullWhiteProcess> jointProcess(
                 new HybridHestonHullWhiteProcess(hestonProcess, hwProcess, i));
 
@@ -451,11 +446,8 @@ void HybridHestonHullWhiteProcessTest::testMcVanillaPricing() {
     }
 }
 
-
-void HybridHestonHullWhiteProcessTest::testMcPureHestonPricing() {
+BOOST_AUTO_TEST_CASE(testMcPureHestonPricing) {
     BOOST_TEST_MESSAGE("Testing Monte-Carlo Heston option pricing...");
-
-    SavedSettings backup;
 
     DayCounter dc = Actual360();
     const Date today = Date::todaysDate();
@@ -470,7 +462,6 @@ void HybridHestonHullWhiteProcessTest::testMcPureHestonPricing() {
 
     for (Size i=0; i <= 100; ++i) {
         dates.push_back(today+Period(i, Months));
-        // FLOATING_POINT_EXCEPTION
         rates.push_back(0.02 + 0.0002*std::exp(std::sin(i/10.0)));
         divRates.push_back(0.02 + 0.0001*std::exp(std::sin(i/20.0)));
     }
@@ -495,8 +486,8 @@ void HybridHestonHullWhiteProcessTest::testMcPureHestonPricing() {
     const Real corr[] = { -0.45, 0.45, 0.25 };
     const Real strike[] = { 100, 75, 50, 150 };
 
-    for (double i : corr) {
-        for (double j : strike) {
+    for (Real i : corr) {
+        for (Real j : strike) {
             ext::shared_ptr<HybridHestonHullWhiteProcess> jointProcess(
                 new HybridHestonHullWhiteProcess(hestonProcess, hwProcess, i,
                                                  HybridHestonHullWhiteProcess::Euler));
@@ -537,11 +528,8 @@ void HybridHestonHullWhiteProcessTest::testMcPureHestonPricing() {
     }
 }
 
-
-void HybridHestonHullWhiteProcessTest::testAnalyticHestonHullWhitePricing() {
+BOOST_AUTO_TEST_CASE(testAnalyticHestonHullWhitePricing) {
     BOOST_TEST_MESSAGE("Testing analytic Heston Hull-White option pricing...");
-
-    SavedSettings backup;
 
     DayCounter dc = Actual360();
     const Date today = Date::todaysDate();
@@ -556,7 +544,6 @@ void HybridHestonHullWhiteProcessTest::testAnalyticHestonHullWhitePricing() {
 
     for (Size i=0; i <= 40; ++i) {
         dates.push_back(today+Period(i, Years));
-        // FLOATING_POINT_EXCEPTION
         rates.push_back(0.03 + 0.0001*std::exp(std::sin(i/4.0)));
         divRates.push_back(0.02 + 0.0002*std::exp(std::sin(i/3.0)));
     }
@@ -585,7 +572,7 @@ void HybridHestonHullWhiteProcessTest::testAnalyticHestonHullWhitePricing() {
     const Option::Type types[] = { Option::Put, Option::Call };
 
     for (auto type : types) {
-        for (double j : strike) {
+        for (Real j : strike) {
             ext::shared_ptr<HybridHestonHullWhiteProcess> jointProcess(
                 new HybridHestonHullWhiteProcess(
                         hestonProcess, hwFwdProcess, 0.0,
@@ -624,10 +611,8 @@ void HybridHestonHullWhiteProcessTest::testAnalyticHestonHullWhitePricing() {
     }
 }
 
-void HybridHestonHullWhiteProcessTest::testCallableEquityPricing() {
+BOOST_AUTO_TEST_CASE(testCallableEquityPricing) {
     BOOST_TEST_MESSAGE("Testing the pricing of a callable equity product...");
-
-    SavedSettings backup;
 
     /*
        For the definition of the example product see
@@ -652,7 +637,6 @@ void HybridHestonHullWhiteProcessTest::testCallableEquityPricing() {
     const ext::shared_ptr<HestonProcess> hestonProcess(
             new HestonProcess(rTS, qTS, spot, 0.0625, 1.0,
                               0.24*0.24, 1e-4, 0.0));
-    // FLOATING_POINT_EXCEPTION
     const ext::shared_ptr<HullWhiteForwardProcess> hwProcess(
             new HullWhiteForwardProcess(rTS, 0.00883, 0.00526));
     hwProcess->setForwardMeasureTime(
@@ -738,11 +722,9 @@ void HybridHestonHullWhiteProcessTest::testCallableEquityPricing() {
     }
 }
 
-void HybridHestonHullWhiteProcessTest::testDiscretizationError() {
+BOOST_AUTO_TEST_CASE(testDiscretizationError) {
     BOOST_TEST_MESSAGE("Testing the discretization error of the "
                        "Heston Hull-White process...");
-
-    SavedSettings backup;
 
     DayCounter dc = Actual360();
     const Date today = Date::todaysDate();
@@ -757,7 +739,6 @@ void HybridHestonHullWhiteProcessTest::testDiscretizationError() {
 
     for (Size i=0; i <= 31; ++i) {
         dates.push_back(today+Period(i, Years));
-        // FLOATING_POINT_EXCEPTION
         rates.push_back(0.04 + 0.0001*std::exp(std::sin(double(i))));
         divRates.push_back(0.04 + 0.0001*std::exp(std::sin(double(i))));
     }
@@ -788,8 +769,8 @@ void HybridHestonHullWhiteProcessTest::testDiscretizationError() {
     const Real corr[] = {-0.85, 0.5 };
     const Real strike[] = { 50, 100, 125 };
 
-    for (double i : corr) {
-        for (double j : strike) {
+    for (Real i : corr) {
+        for (Real j : strike) {
             ext::shared_ptr<StrikedTypePayoff> payoff(new PlainVanillaPayoff(Option::Put, j));
             ext::shared_ptr<Exercise> exercise(
                                new EuropeanExercise(maturity));
@@ -826,10 +807,8 @@ void HybridHestonHullWhiteProcessTest::testDiscretizationError() {
     }
 }
 
-void HybridHestonHullWhiteProcessTest::testFdmHestonHullWhiteEngine() {
+BOOST_AUTO_TEST_CASE(testFdmHestonHullWhiteEngine, *precondition(if_speed(Fast))) {
     BOOST_TEST_MESSAGE("Testing the FDM Heston Hull-White engine...");
-
-    SavedSettings backup;
 
     const Date today = Date(28, March, 2004);
     Settings::instance().evaluationDate() = today;
@@ -860,8 +839,8 @@ void HybridHestonHullWhiteProcessTest::testFdmHestonHullWhiteEngine() {
     const Real corr[] = {-0.85, 0.5 };
     const Real strike[] = { 75, 120, 160 };
 
-    for (double i : corr) {
-        for (double j : strike) {
+    for (Real i : corr) {
+        for (Real j : strike) {
             ext::shared_ptr<StrikedTypePayoff> payoff(new PlainVanillaPayoff(Option::Call, j));
             VanillaOption option(payoff, exercise);
 
@@ -996,12 +975,10 @@ namespace hybrid_heston_hullwhite_process_test {
     }
 }
 
-void HybridHestonHullWhiteProcessTest::testBsmHullWhitePricing() {
+BOOST_AUTO_TEST_CASE(testBsmHullWhitePricing) {
     BOOST_TEST_MESSAGE("Testing convergence speed of Heston-Hull-White engine...");
 
     using namespace hybrid_heston_hullwhite_process_test;
-
-    SavedSettings backup;
 
     Date today(27, December, 2004);
     Settings::instance().evaluationDate() = today;
@@ -1053,7 +1030,7 @@ void HybridHestonHullWhiteProcessTest::testBsmHullWhitePricing() {
                 fdEngine->enableMultipleStrikesCaching(strikes);
 
                 Real avgPriceDiff = 0.0;
-                for (double& strike : strikes) {
+                for (Real& strike : strikes) {
                     VanillaOptionData optionData = {strike, maturity, Option::Call};
                     ext::shared_ptr<VanillaOption> option
                                         = makeVanillaOption(optionData);
@@ -1084,12 +1061,10 @@ void HybridHestonHullWhiteProcessTest::testBsmHullWhitePricing() {
     }
 }
 
-void HybridHestonHullWhiteProcessTest::testSpatialDiscretizatinError() {
+BOOST_AUTO_TEST_CASE(testSpatialDiscretizatinError, *precondition(if_speed(Fast))) {
     BOOST_TEST_MESSAGE("Testing spatial convergence speed of Heston engine...");
 
     using namespace hybrid_heston_hullwhite_process_test;
-
-    SavedSettings backup;
 
     Date today(27, December, 2004);
     Settings::instance().evaluationDate() = today;
@@ -1118,7 +1093,7 @@ void HybridHestonHullWhiteProcessTest::testSpatialDiscretizatinError() {
                         schemes[i].schemeDesc));
                 fdEngine->enableMultipleStrikesCaching(strikes);
 
-                for (double& strike : strikes) {
+                for (Real& strike : strikes) {
                     VanillaOptionData optionData = {strike, maturity, Option::Call};
                     ext::shared_ptr<VanillaOption> option
                                         = makeVanillaOption(optionData);
@@ -1157,8 +1132,7 @@ namespace hybrid_heston_hullwhite_process_test {
             bool test(const Array& params) const override {
                 const Real rho = params[3];
 
-                return (  square<Real>()(rho)
-                        + square<Real>()(equityShortRateCorr_) <= 1.0);
+                return (squared(rho) + squared(equityShortRateCorr_) <= 1.0);
             }
 
           private:
@@ -1173,8 +1147,7 @@ namespace hybrid_heston_hullwhite_process_test {
     };
 }
 
-
-void HybridHestonHullWhiteProcessTest::testHestonHullWhiteCalibration() {
+BOOST_AUTO_TEST_CASE(testHestonHullWhiteCalibration, *precondition(if_speed(Slow))) {
     BOOST_TEST_MESSAGE("Testing the Heston Hull-White calibration...");
 
     using namespace hybrid_heston_hullwhite_process_test;
@@ -1187,8 +1160,6 @@ void HybridHestonHullWhiteProcessTest::testHestonHullWhiteCalibration() {
     // Heston    : \nu = 0.12, \kappa = 2.0,
     //             \theta = 0.09, \sigma = 0.5, \rho=-0.75
     // Equity Short rate correlation: -0.5
-
-    SavedSettings backup;
 
     const DayCounter dc = Actual365Fixed();
     const Calendar calendar = TARGET();
@@ -1376,9 +1347,8 @@ void HybridHestonHullWhiteProcessTest::testHestonHullWhiteCalibration() {
     }
 }
 
-void HybridHestonHullWhiteProcessTest::testH1HWPricingEngine() {
-
-    SavedSettings backup;
+BOOST_AUTO_TEST_CASE(testH1HWPricingEngine) {
+    BOOST_TEST_MESSAGE("Testing the H1-HW approximation engine...");
 
     /*
      * Example taken from Lech Aleksander Grzelak,
@@ -1458,41 +1428,6 @@ void HybridHestonHullWhiteProcessTest::testH1HWPricingEngine() {
     }
 }
 
-test_suite* HybridHestonHullWhiteProcessTest::suite(SpeedLevel speed) {
-    auto* suite = BOOST_TEST_SUITE("Hybrid Heston-HullWhite tests");
+BOOST_AUTO_TEST_SUITE_END()
 
-    suite->add(QUANTLIB_TEST_CASE(
-        &HybridHestonHullWhiteProcessTest::testBsmHullWhiteEngine));
-    suite->add(QUANTLIB_TEST_CASE(
-        &HybridHestonHullWhiteProcessTest::testCompareBsmHWandHestonHW));
-    suite->add(QUANTLIB_TEST_CASE(
-        &HybridHestonHullWhiteProcessTest::testZeroBondPricing));
-    suite->add(QUANTLIB_TEST_CASE(
-        &HybridHestonHullWhiteProcessTest::testMcVanillaPricing));
-    suite->add(QUANTLIB_TEST_CASE(
-        &HybridHestonHullWhiteProcessTest::testMcPureHestonPricing));
-    suite->add(QUANTLIB_TEST_CASE(
-      &HybridHestonHullWhiteProcessTest::testAnalyticHestonHullWhitePricing));
-    suite->add(QUANTLIB_TEST_CASE(
-        &HybridHestonHullWhiteProcessTest::testCallableEquityPricing));
-    suite->add(QUANTLIB_TEST_CASE(
-        &HybridHestonHullWhiteProcessTest::testDiscretizationError));
-    suite->add(QUANTLIB_TEST_CASE(
-        &HybridHestonHullWhiteProcessTest::testBsmHullWhitePricing));
-    suite->add(QUANTLIB_TEST_CASE(
-        &HybridHestonHullWhiteProcessTest::testH1HWPricingEngine));
-
-    if (speed <= Fast) {
-        suite->add(QUANTLIB_TEST_CASE(
-            &HybridHestonHullWhiteProcessTest::testSpatialDiscretizatinError));
-        suite->add(QUANTLIB_TEST_CASE(
-            &HybridHestonHullWhiteProcessTest::testFdmHestonHullWhiteEngine));
-    }
-
-    if (speed == Slow) {
-        suite->add(QUANTLIB_TEST_CASE(
-            &HybridHestonHullWhiteProcessTest::testHestonHullWhiteCalibration));
-    }
-
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

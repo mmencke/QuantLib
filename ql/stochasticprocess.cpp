@@ -26,8 +26,6 @@ namespace QuantLib {
 
     // base class
 
-    StochasticProcess::StochasticProcess() = default;
-
     StochasticProcess::StochasticProcess(ext::shared_ptr<discretization> disc)
     : discretization_(std::move(disc)) {}
 
@@ -35,32 +33,31 @@ namespace QuantLib {
         return size();
     }
 
-    Disposable<Array> StochasticProcess::expectation(Time t0,
-                                                     const Array& x0,
-                                                     Time dt) const {
+    Array StochasticProcess::expectation(Time t0,
+                                         const Array& x0,
+                                         Time dt) const {
         return apply(x0, discretization_->drift(*this, t0, x0, dt));
     }
 
-    Disposable<Matrix> StochasticProcess::stdDeviation(Time t0,
-                                                       const Array& x0,
-                                                       Time dt) const {
+    Matrix StochasticProcess::stdDeviation(Time t0,
+                                           const Array& x0,
+                                           Time dt) const {
         return discretization_->diffusion(*this, t0, x0, dt);
     }
 
-    Disposable<Matrix> StochasticProcess::covariance(Time t0,
-                                                     const Array& x0,
-                                                     Time dt) const {
+    Matrix StochasticProcess::covariance(Time t0,
+                                         const Array& x0,
+                                         Time dt) const {
         return discretization_->covariance(*this, t0, x0, dt);
     }
 
-    Disposable<Array> StochasticProcess::evolve(
-                                             Time t0, const Array& x0,
-                                             Time dt, const Array& dw) const {
+    Array StochasticProcess::evolve(Time t0, const Array& x0,
+                                    Time dt, const Array& dw) const {
         return apply(expectation(t0,x0,dt), stdDeviation(t0,x0,dt)*dw);
     }
 
-    Disposable<Array> StochasticProcess::apply(const Array& x0,
-                                               const Array& dx) const {
+    Array StochasticProcess::apply(const Array& x0,
+                                   const Array& dx) const {
         return x0 + dx;
     }
 
@@ -74,8 +71,6 @@ namespace QuantLib {
 
 
     // 1-D specialization
-
-    StochasticProcess1D::StochasticProcess1D() = default;
 
     StochasticProcess1D::StochasticProcess1D(ext::shared_ptr<discretization> disc)
     : discretization_(std::move(disc)) {}

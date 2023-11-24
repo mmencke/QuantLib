@@ -3,6 +3,7 @@
 /*
  Copyright (C) 2005, 2007 StatPro Italia srl
  Copyright (C) 2016 Klaus Spanderen
+ Copyright (C) 2021, 2022 Ralf Konrad Eckel
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -18,19 +19,22 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "bermudanswaption.hpp"
+#include "speedlevel.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-#include <ql/instruments/swaption.hpp>
-#include <ql/pricingengines/swaption/treeswaptionengine.hpp>
-#include <ql/pricingengines/swap/discountingswapengine.hpp>
-#include <ql/pricingengines/swaption/fdhullwhiteswaptionengine.hpp>
-#include <ql/pricingengines/swaption/fdg2swaptionengine.hpp>
-#include <ql/models/shortrate/onefactormodels/hullwhite.hpp>
-#include <ql/models/shortrate/twofactormodels/g2.hpp>
 #include <ql/cashflows/coupon.hpp>
 #include <ql/cashflows/iborcoupon.hpp>
-#include <ql/time/daycounters/thirty360.hpp>
 #include <ql/indexes/ibor/euribor.hpp>
+#include <ql/instruments/makevanillaswap.hpp>
+#include <ql/instruments/swaption.hpp>
+#include <ql/models/shortrate/onefactormodels/hullwhite.hpp>
+#include <ql/models/shortrate/twofactormodels/g2.hpp>
+#include <ql/pricingengines/swap/discountingswapengine.hpp>
+#include <ql/pricingengines/swaption/fdg2swaptionengine.hpp>
+#include <ql/pricingengines/swaption/fdhullwhiteswaptionengine.hpp>
+#include <ql/pricingengines/swaption/treeswaptionengine.hpp>
+#include <ql/termstructures/yield/flatforward.hpp>
+#include <ql/time/daycounters/thirty360.hpp>
 #include <ql/time/schedule.hpp>
 
 
@@ -46,7 +50,7 @@ namespace bermudan_swaption_test {
 
         // underlying swap parameters
         Integer startYears, length;
-        VanillaSwap::Type type;
+        Swap::Type type;
         Real nominal;
         BusinessDayConvention fixedConvention, floatingConvention;
         Frequency fixedFrequency, floatingFrequency;
@@ -56,21 +60,18 @@ namespace bermudan_swaption_test {
 
         RelinkableHandle<YieldTermStructure> termStructure;
 
-        // cleanup
-        SavedSettings backup;
-
         // setup
         CommonVars() {
             startYears = 1;
             length = 5;
-            type = VanillaSwap::Payer;
+            type = Swap::Payer;
             nominal = 1000.0;
             settlementDays = 2;
             fixedConvention = Unadjusted;
             floatingConvention = ModifiedFollowing;
             fixedFrequency = Annual;
             floatingFrequency = Semiannual;
-            fixedDayCount = Thirty360();
+            fixedDayCount = Thirty360(Thirty360::BondBasis);
             index = ext::shared_ptr<IborIndex>(new Euribor6M(termStructure));
             calendar = index->fixingCalendar();
             today = calendar.adjust(Date::todaysDate());
@@ -106,13 +107,18 @@ namespace bermudan_swaption_test {
 
 }
 
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
 
-void BermudanSwaptionTest::testCachedValues() {
+BOOST_AUTO_TEST_SUITE(BermudanSwaptionTest)
+
+BOOST_AUTO_TEST_CASE(testCachedValues) {
 
     BOOST_TEST_MESSAGE(
         "Testing Bermudan swaption with HW model against cached values...");
 
     using namespace bermudan_swaption_test;
+
+    bool usingAtParCoupons = IborCoupon::Settings::instance().usingAtParCoupons();
 
     CommonVars vars;
 
@@ -150,11 +156,11 @@ void BermudanSwaptionTest::testCachedValues() {
 
     Real itmValue,    atmValue,    otmValue;
     Real itmValueFdm, atmValueFdm, otmValueFdm;
-    if (!IborCoupon::usingAtParCoupons()) {
-        itmValue    = 42.2413,    atmValue = 12.8789,    otmValue = 2.4759;
+    if (!usingAtParCoupons) {
+        itmValue    = 42.2402,    atmValue = 12.9032,    otmValue = 2.49758;
         itmValueFdm = 42.2111, atmValueFdm = 12.8879, otmValueFdm = 2.44443;
     } else {
-        itmValue    = 42.2470,    atmValue = 12.8826,    otmValue = 2.4769;
+        itmValue    = 42.2460,    atmValue = 12.9069,    otmValue = 2.4985;
         itmValueFdm = 42.2091, atmValueFdm = 12.8864, otmValueFdm = 2.4437;
     }
 
@@ -206,10 +212,10 @@ void BermudanSwaptionTest::testCachedValues() {
     exercise =
         ext::shared_ptr<Exercise>(new BermudanExercise(exerciseDates));
 
-    if (!IborCoupon::usingAtParCoupons()) {
-        itmValue = 42.1917; atmValue = 12.7788; otmValue = 2.4388;
+    if (!usingAtParCoupons) {
+        itmValue = 42.1791; atmValue = 12.7699; otmValue = 2.4368;
     } else {
-        itmValue = 42.1974; atmValue = 12.7825; otmValue = 2.4399;
+        itmValue = 42.1849; atmValue = 12.7736; otmValue = 2.4379;
     }
 
     swaption = Swaption(itmSwap, exercise);
@@ -233,11 +239,13 @@ void BermudanSwaptionTest::testCachedValues() {
                     << "expected:   " << otmValue);
 }
 
-void BermudanSwaptionTest::testCachedG2Values() {
+BOOST_AUTO_TEST_CASE(testCachedG2Values, *precondition(if_speed(Fast))) {
     BOOST_TEST_MESSAGE(
         "Testing Bermudan swaption with G2 model against cached values...");
 
     using namespace bermudan_swaption_test;
+
+    bool usingAtParCoupons = IborCoupon::Settings::instance().usingAtParCoupons();
 
     CommonVars vars;
 
@@ -259,6 +267,7 @@ void BermudanSwaptionTest::testCachedG2Values() {
         for (const auto& i : swap->fixedLeg()) {
             exerciseDates.push_back(ext::dynamic_pointer_cast<Coupon>(i)->accrualStartDate());
         }
+
         swaptions.push_back(ext::make_shared<Swaption>(swap,
             ext::make_shared<BermudanExercise>(exerciseDates)));
     }
@@ -273,14 +282,14 @@ void BermudanSwaptionTest::testCachedG2Values() {
         ext::make_shared<TreeSwaptionEngine>(g2Model, 50));
 
     Real expectedFdm[5], expectedTree[5];
-    if (!IborCoupon::usingAtParCoupons()) {
+    if (!usingAtParCoupons) {
         Real tmpExpectedFdm[]  = { 103.231, 54.6519, 20.0475, 5.26941, 1.07097 };
-        Real tmpExpectedTree[] = { 103.253, 54.6685, 20.1399, 5.40517, 1.10642 };
+        Real tmpExpectedTree[] = { 103.245, 54.6685, 20.1656, 5.43999, 1.12702 };
         std::copy(tmpExpectedFdm,  tmpExpectedFdm + 5,  expectedFdm);
         std::copy(tmpExpectedTree, tmpExpectedTree + 5, expectedTree);
     } else {
         Real tmpExpectedFdm[]  = { 103.227, 54.6502, 20.0469, 5.26924, 1.07093 };
-        Real tmpExpectedTree[] = { 103.256, 54.6726, 20.1429, 5.4064 , 1.10677 };
+        Real tmpExpectedTree[] = { 103.248, 54.6726, 20.1685, 5.44118, 1.12737 };
         std::copy(tmpExpectedFdm,  tmpExpectedFdm + 5,  expectedFdm);
         std::copy(tmpExpectedTree, tmpExpectedTree + 5, expectedTree);
     }
@@ -307,16 +316,67 @@ void BermudanSwaptionTest::testCachedG2Values() {
     }
 }
 
-test_suite* BermudanSwaptionTest::suite(SpeedLevel speed) {
-    auto* suite = BOOST_TEST_SUITE("Bermudan swaption tests");
+BOOST_AUTO_TEST_CASE(testTreeEngineTimeSnapping) {
+    BOOST_TEST_MESSAGE("Testing snap of exercise dates for discretized swaption...");
 
-    suite->add(QUANTLIB_TEST_CASE(&BermudanSwaptionTest::testCachedValues));
+    Date today = Date(8, Jul, 2021);
+    Settings::instance().evaluationDate() = today;
 
-    if (speed == Slow) {
-        suite->add(QUANTLIB_TEST_CASE(
-            &BermudanSwaptionTest::testCachedG2Values));
+    RelinkableHandle<YieldTermStructure> termStructure;
+    termStructure.linkTo(ext::make_shared<FlatForward>(today, 0.02, Actual365Fixed()));
+    auto index = ext::make_shared<Euribor3M>(termStructure);
+
+    auto makeBermudanSwaption = [&index](Date callDate) {
+        auto effectiveDate = Date(15, May, 2025);
+        ext::shared_ptr<VanillaSwap> swap = MakeVanillaSwap(Period(10, Years), index, 0.05)
+                                                .withEffectiveDate(effectiveDate)
+                                                .withNominal(10000.00)
+                                                .withType(Swap::Type::Payer);
+
+        std::vector<Date> exerciseDates{effectiveDate, callDate};
+        auto bermudanExercise = ext::make_shared<BermudanExercise>(exerciseDates);
+        auto bermudanSwaption = ext::make_shared<Swaption>(swap, bermudanExercise);
+
+        return bermudanSwaption;
+    };
+
+    int intervalOfDaysToTest = 10;
+
+    for (int i = -intervalOfDaysToTest; i < intervalOfDaysToTest + 1; i++) {
+        static auto initialCallDate = Date(15, May, 2030);
+        static auto calendar = index->fixingCalendar();
+
+        auto callDate = initialCallDate + i * Days;
+        if (calendar.isBusinessDay(callDate)) {
+
+            auto bermudanSwaption = makeBermudanSwaption(callDate);
+
+            auto model = ext::make_shared<HullWhite>(termStructure);
+
+            bermudanSwaption->setPricingEngine(ext::make_shared<FdHullWhiteSwaptionEngine>(model));
+            auto npvFD = bermudanSwaption->NPV();
+
+            constexpr auto timesteps = 14 * 4 * 4;
+
+            bermudanSwaption->setPricingEngine(
+                ext::make_shared<TreeSwaptionEngine>(model, timesteps));
+            auto npvTree = bermudanSwaption->NPV();
+
+            auto npvDiff = npvTree - npvFD;
+
+            static auto tolerance = 1.0;
+            if (std::abs(npvTree - npvFD) > tolerance) {
+                BOOST_ERROR(std::fixed << std::setprecision(2) << std::setw(5) << "At "
+                                       << io::iso_date(callDate)
+                                       << ": The difference between the npv of the FD and the tree "
+                                          "engine is expected to be smaller than "
+                                       << tolerance << " but was " << npvDiff << ". (FD: " << npvFD
+                                       << ", tree: " << npvTree << ")");
+            }
+        }
     }
-
-    return suite;
 }
 
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()

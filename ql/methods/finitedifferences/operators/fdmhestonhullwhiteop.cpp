@@ -41,12 +41,9 @@ namespace QuantLib {
         // on the boundary s_min and s_max the second derivative
         // d²V/dS² is zero and due to Ito's Lemma the variance term
         // in the drift should vanish.
-        const ext::shared_ptr<FdmLinearOpLayout> layout = mesher_->layout();
-        const FdmLinearOpIterator endIter = layout->end();
-        for (FdmLinearOpIterator iter = layout->begin(); iter != endIter;
-            ++iter) {
+        for (const auto& iter : *mesher_->layout()) {
             if (   iter.coordinates()[0] == 0
-                || iter.coordinates()[0] == layout->dim()[0]-1) {
+                || iter.coordinates()[0] == mesher_->layout()->dim()[0]-1) {
                 varianceValues_[iter.index()] = 0.0;
             }
         }
@@ -102,15 +99,14 @@ namespace QuantLib {
         return 3;
     }
 
-    Disposable<Array> FdmHestonHullWhiteOp::apply(const Array& u) const {
+    Array FdmHestonHullWhiteOp::apply(const Array& u) const {
         return  dyMap_.apply(u) + dxMap_.getMap().apply(u)
               + hullWhiteOp_.apply(u)
               + hestonCorrMap_.apply(u) + equityIrCorrMap_.apply(u);
     }
 
-    Disposable<Array>
-    FdmHestonHullWhiteOp::apply_direction(Size direction,
-                                          const Array& r) const {
+    Array FdmHestonHullWhiteOp::apply_direction(Size direction,
+                                                const Array& r) const {
         if (direction == 0)
             return dxMap_.getMap().apply(r);
         else if (direction == 1)
@@ -121,13 +117,12 @@ namespace QuantLib {
             QL_FAIL("direction too large");
     }
 
-    Disposable<Array> FdmHestonHullWhiteOp::apply_mixed(const Array& r) const {
+    Array FdmHestonHullWhiteOp::apply_mixed(const Array& r) const {
         return hestonCorrMap_.apply(r) + equityIrCorrMap_.apply(r);
     }
 
-    Disposable<Array>
-    FdmHestonHullWhiteOp::solve_splitting(Size direction, const Array& r,
-                                          Real a) const {
+    Array FdmHestonHullWhiteOp::solve_splitting(Size direction, const Array& r,
+                                                Real a) const {
         if (direction == 0) {
             return dxMap_.getMap().solve_splitting(r, a, 1.0);
         }
@@ -141,21 +136,18 @@ namespace QuantLib {
             QL_FAIL("direction too large");
     }
     
-    Disposable<Array> FdmHestonHullWhiteOp::preconditioner(const Array& r, 
-                                                           Real dt) const {
+    Array FdmHestonHullWhiteOp::preconditioner(const Array& r, 
+                                               Real dt) const {
         return solve_splitting(0, r, dt);
     }
 
-#if !defined(QL_NO_UBLAS_SUPPORT)
-    Disposable<std::vector<SparseMatrix> >
-    FdmHestonHullWhiteOp::toMatrixDecomp() const {
-        std::vector<SparseMatrix> retVal(4);
-        retVal[0] = dxMap_.getMap().toMatrix();
-        retVal[1] = dyMap_.toMatrix();
-        retVal[2] = hullWhiteOp_.toMatrixDecomp().front();
-        retVal[3] = hestonCorrMap_.toMatrix() + equityIrCorrMap_.toMatrix();
-
-        return retVal;
+    std::vector<SparseMatrix> FdmHestonHullWhiteOp::toMatrixDecomp() const {
+        return {
+            dxMap_.getMap().toMatrix(),
+            dyMap_.toMatrix(),
+            hullWhiteOp_.toMatrixDecomp().front(),
+            hestonCorrMap_.toMatrix() + equityIrCorrMap_.toMatrix()
+        };
     }
-#endif
+
 }

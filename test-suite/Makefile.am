@@ -11,11 +11,13 @@ QL_TEST_SRCS = \
 	barrieroption.cpp \
 	binaryoption.cpp \
 	basismodels.cpp \
+	basisswapratehelpers.cpp \
 	basketoption.cpp \
 	batesmodel.cpp \
 	bermudanswaption.cpp \
 	blackdeltacalculator.cpp \
 	blackformula.cpp \
+	bondforward.cpp \
 	bonds.cpp \
 	brownianbridge.cpp \
 	businessdayconventions.cpp \
@@ -30,6 +32,7 @@ QL_TEST_SRCS = \
 	chooseroption.cpp \
 	cliquetoption.cpp \
 	cms.cpp \
+	cms_normal.cpp \
 	cmsspread.cpp \
 	commodityunitofmeasure.cpp \
 	compiledboostversion.cpp \
@@ -39,6 +42,7 @@ QL_TEST_SRCS = \
 	creditdefaultswap.cpp \
 	creditriskplus.cpp \
 	crosscurrencyratehelpers.cpp \
+	currency.cpp \
 	curvestates.cpp \
 	dates.cpp \
 	daycounters.cpp \
@@ -49,6 +53,9 @@ QL_TEST_SRCS = \
 	dividendoption.cpp \
 	doublebarrieroption.cpp \
 	doublebinaryoption.cpp \
+	equityindex.cpp \
+	equitycashflow.cpp \
+	equitytotalreturnswap.cpp \
 	europeanoption.cpp \
 	everestoption.cpp \
 	exchangerate.cpp \
@@ -113,6 +120,7 @@ QL_TEST_SRCS = \
 	operators.cpp \
 	optimizers.cpp \
 	optionletstripper.cpp \
+	overnightindexedcoupon.cpp \
 	overnightindexedswap.cpp \
 	pagodaoption.cpp \
 	partialtimebarrieroption.cpp \
@@ -120,6 +128,7 @@ QL_TEST_SRCS = \
 	period.cpp \
 	piecewiseyieldcurve.cpp \
 	piecewisezerospreadedtermstructure.cpp \
+	quantlibglobalfixture.cpp \
 	quantooption.cpp \
 	quotes.cpp \
 	rangeaccrual.cpp \
@@ -133,10 +142,12 @@ QL_TEST_SRCS = \
 	shortratemodels.cpp \
 	sofrfutures.cpp \
 	solvers.cpp \
+	speedlevel.cpp \
 	spreadoption.cpp \
 	squarerootclvmodel.cpp \
 	stats.cpp \
 	subperiodcoupons.cpp \
+	svivolatility.cpp \
 	swap.cpp \
 	swapforwardmappings.cpp \
 	swaption.cpp \
@@ -158,100 +169,11 @@ QL_TEST_SRCS = \
 	varianceswaps.cpp \
 	volatilitymodels.cpp \
 	vpp.cpp \
-	zabr.cpp
+	xoshiro256starstar.cpp \
+	zabr.cpp \
+	zerocouponswap.cpp
 
 QL_TEST_HDRS = \
-	speedlevel.hpp \
-	americanoption.hpp \
-	amortizingbond.hpp \
-	andreasenhugevolatilityinterpl.hpp \
-	array.hpp \
-	asianoptions.hpp \
-	assetswap.hpp \
-	autocovariances.hpp \
-	barrieroption.hpp \
-	binaryoption.hpp \
-	basismodels.hpp \
-	basketoption.hpp \
-	batesmodel.hpp \
-	bermudanswaption.hpp \
-	blackdeltacalculator.hpp \
-	blackformula.hpp \
-	bonds.hpp \
-	brownianbridge.hpp \
-	businessdayconventions.hpp \
-	calendars.hpp \
-	callablebonds.hpp \
-	capfloor.hpp \
-	capflooredcoupon.hpp \
-	cashflows.hpp \
-	catbonds.hpp \
-	cdo.hpp \
-	cdsoption.hpp \
-	chooseroption.hpp \
-	cliquetoption.hpp \
-	cms.hpp \
-	cmsspread.hpp \
-	commodityunitofmeasure.hpp \
-	compiledboostversion.hpp \
-	compoundoption.hpp \
-	convertiblebonds.hpp \
-	covariance.hpp \
-	creditdefaultswap.hpp \
-	creditriskplus.hpp \
-	crosscurrencyratehelpers.hpp \
-	curvestates.hpp \
-	dates.hpp \
-	daycounters.hpp \
-	defaultprobabilitycurves.hpp \
-	digitalcoupon.hpp \
-	digitaloption.hpp \
-	distributions.hpp \
-	dividendoption.hpp \
-	doublebarrieroption.hpp \
-	doublebinaryoption.hpp \
-	europeanoption.hpp \
-	everestoption.hpp \
-	exchangerate.hpp \
-	extendedtrees.hpp \
-	extensibleoptions.hpp \
-	fastfouriertransform.hpp \
-	fdheston.hpp \
-	fdcir.hpp \
-	fdmlinearop.hpp \
-	fdcev.hpp \
-	fdsabr.hpp \
-	fittedbonddiscountcurve.hpp \
-	forwardoption.hpp \
-	forwardrateagreement.hpp \
-	functions.hpp \
-	garch.hpp \
-	gaussianquadratures.hpp \
-	gjrgarchmodel.hpp \
-	gsr.hpp \
-	hestonmodel.hpp \
-	hestonslvmodel.hpp \
-	himalayaoption.hpp \
-	hybridhestonhullwhiteprocess.hpp \
-	indexes.hpp \
-	inflation.hpp \
-	inflationcapfloor.hpp \
-	inflationcapflooredcoupon.hpp \
-	inflationcpibond.hpp \
-	inflationcpicapfloor.hpp \
-	inflationcpiswap.hpp \
-	inflationvolatility.hpp \
-	instruments.hpp \
-	integrals.hpp \
-	interestrates.hpp \
-	interpolations.hpp \
-	jumpdiffusion.hpp \
-	lazyobject.hpp \
-	libormarketmodel.hpp \
-	libormarketmodelprocess.hpp \
-	linearleastsquaresregression.hpp \
-	lookbackoptions.hpp \
-	lowdiscrepancysequences.hpp \
 	margrabeoption.hpp \
 	marketmodel.hpp \
 	marketmodel_cms.hpp \
@@ -274,6 +196,7 @@ QL_TEST_HDRS = \
 	operators.hpp \
 	optimizers.hpp \
 	optionletstripper.hpp \
+	overnightindexedcoupon.hpp \
 	overnightindexedswap.hpp \
 	pagodaoption.hpp \
 	partialtimebarrieroption.hpp \
@@ -281,6 +204,7 @@ QL_TEST_HDRS = \
 	period.hpp \
 	piecewiseyieldcurve.hpp \
 	piecewisezerospreadedtermstructure.hpp \
+	quantlibglobalfixture.hpp \
 	quantooption.hpp \
 	quotes.hpp \
 	rangeaccrual.hpp \
@@ -294,10 +218,12 @@ QL_TEST_HDRS = \
 	shortratemodels.hpp \
 	sofrfutures.hpp \
 	solvers.hpp \
+	speedlevel.hpp \
 	spreadoption.hpp \
 	squarerootclvmodel.hpp \
 	stats.hpp \
 	subperiodcoupons.hpp \
+	svivolatility.hpp \
 	swap.hpp \
 	swapforwardmappings.hpp \
 	swaption.hpp \
@@ -310,6 +236,7 @@ QL_TEST_HDRS = \
 	timeseries.hpp \
 	transformedgrid.hpp \
 	tqreigendecomposition.hpp \
+    toplevelfixture.hpp \
 	tracing.hpp \
 	twoassetbarrieroption.hpp \
 	twoassetcorrelationoption.hpp \
@@ -320,7 +247,9 @@ QL_TEST_HDRS = \
 	varianceswaps.hpp \
 	volatilitymodels.hpp \
 	vpp.hpp \
-	zabr.hpp
+	xoshiro256starstar.hpp \
+	zabr.hpp \
+	zerocouponswap.hpp
 
 QL_TESTS = ${QL_TEST_SRCS} ${QL_TEST_HDRS}
 
@@ -343,32 +272,21 @@ QL_BENCHMARK_SRCS = \
 	lowdiscrepancysequences.cpp \
 	marketmodel_cms.cpp \
 	marketmodel_smm.cpp \
+	quantlibglobalfixture.cpp \
 	quantooption.cpp \
 	riskstats.cpp \
 	shortratemodels.cpp \
+	speedlevel.cpp \
 	utilities.cpp
 
 QL_BENCHMARK_HDRS = \
-	americanoption.hpp \
-	asianoptions.hpp \
-	barrieroption.hpp \
-	doublebarrieroption.hpp \
-	basketoption.hpp \
-	batesmodel.hpp \
-	convertiblebonds.hpp \
-	digitaloption.hpp \
-	dividendoption.hpp \
-	europeanoption.hpp \
-	fdheston.hpp \
-	hestonmodel.hpp \
-	interpolations.hpp \
-	jumpdiffusion.hpp \
-	lowdiscrepancysequences.hpp \
 	marketmodel_cms.hpp \
 	marketmodel_smm.hpp \
+	quantlibglobalfixture.hpp \
 	quantooption.hpp \
 	riskstats.hpp \
 	shortratemodels.hpp \
+	speedlevel.hpp \
 	utilities.hpp
 
 QL_BENCHMARKS = ${QL_BENCHMARK_SRCS} ${QL_BENCHMARK_HDRS}
@@ -378,7 +296,7 @@ dist-hook:
 	mkdir -p $(distdir)/bin
 	cp -p $(srcdir)/bin/runtest.bat $(distdir)/bin
 
-if BOOST_UNIT_TEST_FOUND
+if BUILD_TEST_SUITE
 
 AM_CPPFLAGS = -I${top_builddir} -I${top_srcdir}
 
@@ -405,13 +323,14 @@ unity_test.cpp: Makefile.am
 		echo "#include \"test-suite/$$i\"" >> $@; \
 	done
 
-nodist_quantlib_benchmark_SOURCES = unity_benchmark.cpp
+nodist_quantlib_benchmark_SOURCES = unity_benchmark.cpp quantlibbenchmark.cpp
+UNITY_SRC = $(filter-out quantlibbenchmark.cpp,$(QL_BENCHMARK_SRCS))
 
 unity_benchmark.cpp: Makefile.am
 	echo "/* This file is automatically generated; do not edit.     */" > $@
 	echo "/* Add the files to be included into Makefile.am instead. */" >> $@
 	echo >> $@
-	for i in $(QL_BENCHMARK_SRCS); do \
+	for i in $(UNITY_SRC); do \
 		echo "#include \"test-suite/$$i\"" >> $@; \
 	done
 
@@ -428,10 +347,10 @@ EXTRA_DIST =
 endif
 
 quantlib_test_suite_LDADD = libUnitMain.la ${top_builddir}/ql/libQuantLib.la \
-                            ${BOOST_UNIT_TEST_LIB} ${BOOST_THREAD_LIB} ${BOOST_INTERPROCESS_LIB}
+                            ${PTHREAD_LIB} ${BOOST_INTERPROCESS_LIB}
 
 quantlib_benchmark_LDADD = libUnitMain.la ${top_builddir}/ql/libQuantLib.la \
-                           ${BOOST_UNIT_TEST_LIB} ${BOOST_THREAD_LIB}
+                           ${PTHREAD_LIB}
 
 TESTS = quantlib-test-suite$(EXEEXT)
 TESTS_ENVIRONMENT = BOOST_TEST_LOG_LEVEL=message BOOST_TEST_COLOR_OUTPUT=false

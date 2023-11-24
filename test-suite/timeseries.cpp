@@ -23,17 +23,7 @@
 #include <ql/timeseries.hpp>
 #include <ql/prices.hpp>
 #include <ql/time/calendars/unitedstates.hpp>
-
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#endif
-
 #include <boost/unordered_map.hpp>
-
-#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ > 4))
-#pragma GCC diagnostic pop
-#endif
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
@@ -98,6 +88,8 @@ void TimeSeriesTest::testIterators() {
 
     // projection iterators
 
+    QL_DEPRECATED_DISABLE_WARNING
+
     std::copy(ts.cbegin_time(), ts.cend_time(), dates.begin());
     if (dates[0] != Date(15, March, 2005)) {
         BOOST_ERROR("date does not match");
@@ -155,6 +147,8 @@ void TimeSeriesTest::testIterators() {
     if (prices[0] != 23) {
         BOOST_ERROR("value does not match");
     }
+
+    QL_DEPRECATED_ENABLE_WARNING
 
     // The following should not compile:
     // std::transform(ts1.crbegin(), ts1.crend(), prices.begin(),

@@ -17,9 +17,8 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "cmsspread.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-
 #include <ql/cashflows/cmscoupon.hpp>
 #include <ql/cashflows/lineartsrpricer.hpp>
 #include <ql/experimental/coupons/cmsspreadcoupon.hpp>
@@ -82,7 +81,6 @@ struct TestData {
             cmsPricerN, correlation, yts2, 32);
     }
 
-    SavedSettings backup;
     Date refDate;
     Handle<YieldTermStructure> yts2;
     Handle<SwaptionVolatilityStructure> swLn, swSln, swN;
@@ -93,7 +91,11 @@ struct TestData {
 };
 } // namespace
 
-void CmsSpreadTest::testFixings() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(CmsSpreadExperimentalTest)
+
+BOOST_AUTO_TEST_CASE(testFixings) {
     BOOST_TEST_MESSAGE("Testing fixings of cms spread indices...");
 
     TestData d;
@@ -130,7 +132,6 @@ void CmsSpreadTest::testFixings() {
     cms2y->addFixing(d.refDate, 0.04);
     BOOST_CHECK_EQUAL(cms10y2y->fixing(d.refDate),
                       cms10y->fixing(d.refDate) - cms2y->fixing(d.refDate));
-    IndexManager::instance().clearHistories();
 }
 
 namespace {
@@ -140,7 +141,7 @@ Real mcReferenceValue(const ext::shared_ptr<CmsCoupon>& cpn1,
                       const Handle<SwaptionVolatilityStructure>& vol,
                       const Real correlation) {
     Size samples = 1000000;
-    accumulator_set<double, stats<tag::mean> > acc;
+    accumulator_set<Real, stats<tag::mean> > acc;
     Matrix Cov(2, 2);
     Cov(0, 0) = vol->blackVariance(cpn1->fixingDate(), cpn1->index()->tenor(),
                                    cpn1->indexFixing());
@@ -187,7 +188,7 @@ Real mcReferenceValue(const ext::shared_ptr<CmsCoupon>& cpn1,
 } // mcReferenceValue
 } // namespace
 
-void CmsSpreadTest::testCouponPricing() {
+BOOST_AUTO_TEST_CASE(testCouponPricing) {
     BOOST_TEST_MESSAGE("Testing pricing of cms spread coupons...");
 
     TestData d;
@@ -203,66 +204,62 @@ void CmsSpreadTest::testCouponPricing() {
     Date valueDate = cms10y2y->valueDate(d.refDate);
     Date payDate = valueDate + 1 * Years;
     ext::shared_ptr<CmsCoupon> cpn1a =
-        ext::shared_ptr<CmsCoupon>(new CmsCoupon(
+        ext::make_shared<CmsCoupon>(
             payDate, 10000.0, valueDate, payDate, cms10y->fixingDays(), cms10y,
-            1.0, 0.0, Date(), Date(), Actual360(), false));
-    ext::shared_ptr<CmsCoupon> cpn1b = ext::shared_ptr<CmsCoupon>(
-        new CmsCoupon(payDate, 10000.0, valueDate, payDate, cms2y->fixingDays(),
-                      cms2y, 1.0, 0.0, Date(), Date(), Actual360(), false));
+            1.0, 0.0, Date(), Date(), Actual360(), false);
+    ext::shared_ptr<CmsCoupon> cpn1b = ext::make_shared<CmsCoupon>(
+        payDate, 10000.0, valueDate, payDate, cms2y->fixingDays(),
+                      cms2y, 1.0, 0.0, Date(), Date(), Actual360(), false);
     ext::shared_ptr<CmsSpreadCoupon> cpn1 =
-        ext::shared_ptr<CmsSpreadCoupon>(new CmsSpreadCoupon(
+        ext::make_shared<CmsSpreadCoupon>(
             payDate, 10000.0, valueDate, payDate, cms10y2y->fixingDays(),
-            cms10y2y, 1.0, 0.0, Date(), Date(), Actual360(), false));
+            cms10y2y, 1.0, 0.0, Date(), Date(), Actual360(), false);
     BOOST_CHECK(cpn1->fixingDate() == d.refDate);
     cpn1a->setPricer(d.cmsPricerLn);
     cpn1b->setPricer(d.cmsPricerLn);
     cpn1->setPricer(d.cmsspPricerLn);
 
 #ifndef __FAST_MATH__
-    const Real eqTol = 100*QL_EPSILON;
+    constexpr double eqTol = 100*QL_EPSILON;
 #else
-    const Real eqTol = 1e-13;
+    constexpr double eqTol = 1e-13;
 #endif
-    BOOST_CHECK_CLOSE(cpn1->rate(), cpn1a->rate() - cpn1b->rate(), eqTol);
+    QL_CHECK_CLOSE(cpn1->rate(), cpn1a->rate() - cpn1b->rate(), eqTol);
     cms10y->addFixing(d.refDate, 0.05);
-    BOOST_CHECK_CLOSE(cpn1->rate(), cpn1a->rate() - cpn1b->rate(), eqTol);
+    QL_CHECK_CLOSE(cpn1->rate(), cpn1a->rate() - cpn1b->rate(), eqTol);
     cms2y->addFixing(d.refDate, 0.03);
-    BOOST_CHECK_CLOSE(cpn1->rate(), cpn1a->rate() - cpn1b->rate(), eqTol);
+    QL_CHECK_CLOSE(cpn1->rate(), cpn1a->rate() - cpn1b->rate(), eqTol);
     IndexManager::instance().clearHistories();
 
-    ext::shared_ptr<CmsCoupon> cpn2a = ext::shared_ptr<CmsCoupon>(
-        new CmsCoupon(Date(23, February, 2029), 10000.0,
+    ext::shared_ptr<CmsCoupon> cpn2a = ext::make_shared<CmsCoupon>(
+        Date(23, February, 2029), 10000.0,
                       Date(23, February, 2028), Date(23, February, 2029), 2,
-                      cms10y, 1.0, 0.0, Date(), Date(), Actual360(), false));
-    ext::shared_ptr<CmsCoupon> cpn2b = ext::shared_ptr<CmsCoupon>(
-        new CmsCoupon(Date(23, February, 2029), 10000.0,
+                      cms10y, 1.0, 0.0, Date(), Date(), Actual360(), false);
+    ext::shared_ptr<CmsCoupon> cpn2b = ext::make_shared<CmsCoupon>(
+        Date(23, February, 2029), 10000.0,
                       Date(23, February, 2028), Date(23, February, 2029), 2,
-                      cms2y, 1.0, 0.0, Date(), Date(), Actual360(), false));
+                      cms2y, 1.0, 0.0, Date(), Date(), Actual360(), false);
 
     ext::shared_ptr<CappedFlooredCmsSpreadCoupon> plainCpn =
-        ext::shared_ptr<CappedFlooredCmsSpreadCoupon>(
-            new CappedFlooredCmsSpreadCoupon(
+        ext::make_shared<CappedFlooredCmsSpreadCoupon>(
                 Date(23, February, 2029), 10000.0, Date(23, February, 2028),
                 Date(23, February, 2029), 2, cms10y2y, 1.0, 0.0, Null<Rate>(),
-                Null<Rate>(), Date(), Date(), Actual360(), false));
+                Null<Rate>(), Date(), Date(), Actual360(), false);
     ext::shared_ptr<CappedFlooredCmsSpreadCoupon> cappedCpn =
-        ext::shared_ptr<CappedFlooredCmsSpreadCoupon>(
-            new CappedFlooredCmsSpreadCoupon(
+        ext::make_shared<CappedFlooredCmsSpreadCoupon>(
                 Date(23, February, 2029), 10000.0, Date(23, February, 2028),
                 Date(23, February, 2029), 2, cms10y2y, 1.0, 0.0, 0.03,
-                Null<Rate>(), Date(), Date(), Actual360(), false));
+                Null<Rate>(), Date(), Date(), Actual360(), false);
     ext::shared_ptr<CappedFlooredCmsSpreadCoupon> flooredCpn =
-        ext::shared_ptr<CappedFlooredCmsSpreadCoupon>(
-            new CappedFlooredCmsSpreadCoupon(
+        ext::make_shared<CappedFlooredCmsSpreadCoupon>(
                 Date(23, February, 2029), 10000.0, Date(23, February, 2028),
                 Date(23, February, 2029), 2, cms10y2y, 1.0, 0.0, Null<Rate>(),
-                0.01, Date(), Date(), Actual360(), false));
+                0.01, Date(), Date(), Actual360(), false);
     ext::shared_ptr<CappedFlooredCmsSpreadCoupon> collaredCpn =
-        ext::shared_ptr<CappedFlooredCmsSpreadCoupon>(
-            new CappedFlooredCmsSpreadCoupon(
+        ext::make_shared<CappedFlooredCmsSpreadCoupon>(
                 Date(23, February, 2029), 10000.0, Date(23, February, 2028),
                 Date(23, February, 2029), 2, cms10y2y, 1.0, 0.0, 0.03, 0.01,
-                Date(), Date(), Actual360(), false));
+                Date(), Date(), Actual360(), false);
 
     cpn2a->setPricer(d.cmsPricerLn);
     cpn2b->setPricer(d.cmsPricerLn);
@@ -271,23 +268,23 @@ void CmsSpreadTest::testCouponPricing() {
     flooredCpn->setPricer(d.cmsspPricerLn);
     collaredCpn->setPricer(d.cmsspPricerLn);
 
-    BOOST_CHECK_SMALL(
+    QL_CHECK_SMALL(
         std::abs(plainCpn->rate() - mcReferenceValue(cpn2a, cpn2b, QL_MAX_REAL,
                                                      -QL_MAX_REAL, d.swLn,
                                                      d.correlation->value())),
         tol);
-    BOOST_CHECK_SMALL(
+    QL_CHECK_SMALL(
         std::abs(cappedCpn->rate() - mcReferenceValue(cpn2a, cpn2b, 0.03,
                                                       -QL_MAX_REAL, d.swLn,
                                                       d.correlation->value())),
         tol);
-    BOOST_CHECK_SMALL(
+    QL_CHECK_SMALL(
         std::abs(flooredCpn->rate() -
                  mcReferenceValue(cpn2a, cpn2b, QL_MAX_REAL, 0.01, d.swLn,
                                   d.correlation->value())),
 
         tol);
-    BOOST_CHECK_SMALL(
+    QL_CHECK_SMALL(
         std::abs(collaredCpn->rate() -
                  mcReferenceValue(cpn2a, cpn2b, 0.03, 0.01, d.swLn,
                                   d.correlation->value())),
@@ -300,23 +297,23 @@ void CmsSpreadTest::testCouponPricing() {
     flooredCpn->setPricer(d.cmsspPricerSln);
     collaredCpn->setPricer(d.cmsspPricerSln);
 
-    BOOST_CHECK_SMALL(
+    QL_CHECK_SMALL(
         std::abs(plainCpn->rate() - mcReferenceValue(cpn2a, cpn2b, QL_MAX_REAL,
                                                      -QL_MAX_REAL, d.swSln,
                                                      d.correlation->value())),
         tol);
-    BOOST_CHECK_SMALL(
+    QL_CHECK_SMALL(
         std::abs(cappedCpn->rate() - mcReferenceValue(cpn2a, cpn2b, 0.03,
                                                       -QL_MAX_REAL, d.swSln,
                                                       d.correlation->value())),
         tol);
-    BOOST_CHECK_SMALL(
+    QL_CHECK_SMALL(
         std::abs(flooredCpn->rate() -
                  mcReferenceValue(cpn2a, cpn2b, QL_MAX_REAL, 0.01, d.swSln,
                                   d.correlation->value())),
 
         tol);
-    BOOST_CHECK_SMALL(
+    QL_CHECK_SMALL(
         std::abs(collaredCpn->rate() -
                  mcReferenceValue(cpn2a, cpn2b, 0.03, 0.01, d.swSln,
                                   d.correlation->value())),
@@ -329,30 +326,27 @@ void CmsSpreadTest::testCouponPricing() {
     flooredCpn->setPricer(d.cmsspPricerN);
     collaredCpn->setPricer(d.cmsspPricerN);
 
-    BOOST_CHECK_SMALL(
+    QL_CHECK_SMALL(
         std::abs(plainCpn->rate() - mcReferenceValue(cpn2a, cpn2b, QL_MAX_REAL,
                                                      -QL_MAX_REAL, d.swN,
                                                      d.correlation->value())),
         tol);
-    BOOST_CHECK_SMALL(
+    QL_CHECK_SMALL(
         std::abs(cappedCpn->rate() - mcReferenceValue(cpn2a, cpn2b, 0.03,
                                                       -QL_MAX_REAL, d.swN,
                                                       d.correlation->value())),
         tol);
-    BOOST_CHECK_SMALL(std::abs(flooredCpn->rate() -
+    QL_CHECK_SMALL(std::abs(flooredCpn->rate() -
                                mcReferenceValue(cpn2a, cpn2b, QL_MAX_REAL, 0.01,
                                                 d.swN, d.correlation->value())),
 
                       tol);
-    BOOST_CHECK_SMALL(std::abs(collaredCpn->rate() -
+    QL_CHECK_SMALL(std::abs(collaredCpn->rate() -
                                mcReferenceValue(cpn2a, cpn2b, 0.03, 0.01, d.swN,
                                                 d.correlation->value())),
                       tol);
 }
 
-test_suite* CmsSpreadTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("CmsSpreadTest");
-    suite->add(QUANTLIB_TEST_CASE(&CmsSpreadTest::testFixings));
-    suite->add(QUANTLIB_TEST_CASE(&CmsSpreadTest::testCouponPricing));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()

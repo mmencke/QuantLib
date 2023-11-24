@@ -17,7 +17,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "assetswap.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/time/schedule.hpp>
 #include <ql/instruments/assetswap.hpp>
@@ -45,8 +45,6 @@
 #include <ql/termstructures/volatility/optionlet/constantoptionletvol.hpp>
 #include <ql/termstructures/volatility/swaption/swaptionconstantvol.hpp>
 #include <ql/termstructures/volatility/swaption/swaptionvolmatrix.hpp>
-#include <ql/termstructures/volatility/swaption/swaptionvolcube2.hpp>
-#include <ql/termstructures/volatility/swaption/swaptionvolcube1.hpp>
 #include <ql/termstructures/volatility/swaption/swaptionvolcube.hpp>
 #include <ql/utilities/dataformatters.hpp>
 #include <ql/cashflows/cashflows.hpp>
@@ -72,10 +70,6 @@ namespace asset_swap_test {
         Real faceAmount;
         Compounding compounding;
         RelinkableHandle<YieldTermStructure> termStructure;
-
-        // clean-up
-        SavedSettings backup;
-        IndexHistoryCleaner indexCleaner;
 
         // initial setup
         CommonVars() {
@@ -118,7 +112,12 @@ namespace asset_swap_test {
 
 }
 
-void AssetSwapTest::testConsistency() {
+
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture) // fails with QL_USE_INDEXED_COUPON
+
+BOOST_AUTO_TEST_SUITE(AssetSwapTest)
+
+BOOST_AUTO_TEST_CASE(testConsistency) {
     BOOST_TEST_MESSAGE(
                  "Testing consistency between fair price and fair spread...");
 
@@ -505,12 +504,14 @@ void AssetSwapTest::testConsistency() {
 
 }
 
-void AssetSwapTest::testImpliedValue() {
+BOOST_AUTO_TEST_CASE(testImpliedValue) {
 
     BOOST_TEST_MESSAGE("Testing implied bond value against asset-swap fair"
                        " price with null spread...");
 
     using namespace asset_swap_test;
+
+    bool usingAtParCoupons = IborCoupon::Settings::instance().usingAtParCoupons();
 
     CommonVars vars;
 
@@ -559,11 +560,7 @@ void AssetSwapTest::testImpliedValue() {
     // correct though, only we can not compare it to the bond price
     // directly. The same kind of discrepancy will occur for a multi
     // curve set up, which we do not test here.
-    Real tolerance2;
-    if (!IborCoupon::usingAtParCoupons())
-        tolerance2 = 1.0e-2;
-    else
-        tolerance2 = 1.0e-13;
+    Real tolerance2 = usingAtParCoupons ? 1.0e-13 : 1.0e-2;
 
     Real error1 = std::fabs(fixedBondAssetSwapPrice1-fixedBondPrice1);
 
@@ -733,7 +730,7 @@ void AssetSwapTest::testImpliedValue() {
     ext::shared_ptr<Bond> cmsBond1(
                           new CmsRateBond(settlementDays, vars.faceAmount,
                                           cmsBondSchedule1,
-                                          vars.swapIndex, Thirty360(),
+                                          vars.swapIndex, Thirty360(Thirty360::BondBasis),
                                           Following, fixingDays,
                                           std::vector<Real>(1,1.0),
                                           std::vector<Spread>(1,0.0),
@@ -777,7 +774,7 @@ void AssetSwapTest::testImpliedValue() {
                               DateGeneration::Backward, false);
     ext::shared_ptr<Bond> cmsBond2(new
         CmsRateBond(settlementDays, vars.faceAmount, cmsBondSchedule2,
-                    vars.swapIndex, Thirty360(),
+                    vars.swapIndex, Thirty360(Thirty360::BondBasis),
                     Following, fixingDays,
                     std::vector<Real>(1,0.84), std::vector<Spread>(1,0.0),
                     std::vector<Rate>(), std::vector<Rate>(),
@@ -875,12 +872,14 @@ void AssetSwapTest::testImpliedValue() {
 }
 
 
-void AssetSwapTest::testMarketASWSpread() {
+BOOST_AUTO_TEST_CASE(testMarketASWSpread) {
 
     BOOST_TEST_MESSAGE("Testing relationship between market asset swap"
                        " and par asset swap...");
 
     using namespace asset_swap_test;
+
+    bool usingAtParCoupons = IborCoupon::Settings::instance().usingAtParCoupons();
 
     CommonVars vars;
 
@@ -932,11 +931,7 @@ void AssetSwapTest::testMarketASWSpread() {
     Real fixedBondMktAssetSwapSpread1 = fixedBondMktAssetSwap1.fairSpread();
 
     // see comment above
-    Real tolerance2;
-    if (!IborCoupon::usingAtParCoupons())
-        tolerance2 = 1.0e-4;
-    else
-        tolerance2 = 1.0e-13;
+    Real tolerance2 = usingAtParCoupons ? 1.0e-13 : 1.0e-4;
 
     Real error1 =
         std::fabs(fixedBondMktAssetSwapSpread1-
@@ -1127,7 +1122,7 @@ void AssetSwapTest::testMarketASWSpread() {
                               DateGeneration::Backward, false);
     ext::shared_ptr<Bond> cmsBond1(new
         CmsRateBond(settlementDays, vars.faceAmount, cmsBondSchedule1,
-                    vars.swapIndex, Thirty360(),
+                    vars.swapIndex, Thirty360(Thirty360::BondBasis),
                     Following, fixingDays,
                     std::vector<Real>(1,1.0), std::vector<Spread>(1,0.0),
                     std::vector<Rate>(1,0.055), std::vector<Rate>(1,0.025),
@@ -1180,7 +1175,7 @@ void AssetSwapTest::testMarketASWSpread() {
                               DateGeneration::Backward, false);
     ext::shared_ptr<Bond> cmsBond2(new
         CmsRateBond(settlementDays, vars.faceAmount, cmsBondSchedule2,
-                    vars.swapIndex, Thirty360(),
+                    vars.swapIndex, Thirty360(Thirty360::BondBasis),
                     Following, fixingDays,
                     std::vector<Real>(1,0.84), std::vector<Spread>(1,0.0),
                     std::vector<Rate>(), std::vector<Rate>(),
@@ -1317,7 +1312,7 @@ void AssetSwapTest::testMarketASWSpread() {
 }
 
 
-void AssetSwapTest::testZSpread() {
+BOOST_AUTO_TEST_CASE(testZSpread) {
 
     BOOST_TEST_MESSAGE("Testing clean and dirty price with null Z-spread "
                        "against theoretical prices...");
@@ -1499,7 +1494,7 @@ void AssetSwapTest::testZSpread() {
                               DateGeneration::Backward, false);
     ext::shared_ptr<Bond> cmsBond1(new
         CmsRateBond(settlementDays, vars.faceAmount, cmsBondSchedule1,
-                    vars.swapIndex, Thirty360(),
+                    vars.swapIndex, Thirty360(Thirty360::BondBasis),
                     Following, fixingDays,
                     std::vector<Real>(1,1.0), std::vector<Spread>(1,0.0),
                     std::vector<Rate>(1,0.055), std::vector<Rate>(1,0.025),
@@ -1539,7 +1534,7 @@ void AssetSwapTest::testZSpread() {
                               DateGeneration::Backward, false);
     ext::shared_ptr<Bond> cmsBond2(new
         CmsRateBond(settlementDays, vars.faceAmount, cmsBondSchedule2,
-                    vars.swapIndex, Thirty360(),
+                    vars.swapIndex, Thirty360(Thirty360::BondBasis),
                     Following, fixingDays,
                     std::vector<Real>(1,0.84), std::vector<Spread>(1,0.0),
                     std::vector<Rate>(), std::vector<Rate>(),
@@ -1639,12 +1634,14 @@ void AssetSwapTest::testZSpread() {
 }
 
 
-void AssetSwapTest::testGenericBondImplied() {
+BOOST_AUTO_TEST_CASE(testGenericBondImplied) {
 
     BOOST_TEST_MESSAGE("Testing implied generic-bond value against"
                        " asset-swap fair price with null spread...");
 
     using namespace asset_swap_test;
+
+    bool usingAtParCoupons = IborCoupon::Settings::instance().usingAtParCoupons();
 
     CommonVars vars;
 
@@ -1693,11 +1690,7 @@ void AssetSwapTest::testGenericBondImplied() {
     Real tolerance = 1.0e-13;
 
     // see comment above
-    Real tolerance2;
-    if (!IborCoupon::usingAtParCoupons())
-        tolerance2 = 1.0e-2;
-    else
-        tolerance2 = 1.0e-13;
+    Real tolerance2 = usingAtParCoupons? 1.0e-13 : 1.0e-2;
 
     Real error1 = std::fabs(fixedBondAssetSwapPrice1-fixedBondPrice1);
 
@@ -1878,7 +1871,7 @@ void AssetSwapTest::testGenericBondImplied() {
                               DateGeneration::Backward, false);
     Leg cmsBondLeg1 = CmsLeg(cmsBondSchedule1, vars.swapIndex)
         .withNotionals(vars.faceAmount)
-        .withPaymentDayCounter(Thirty360())
+        .withPaymentDayCounter(Thirty360(Thirty360::BondBasis))
         .withFixingDays(fixingDays)
         .withCaps(0.055)
         .withFloors(0.025)
@@ -1926,7 +1919,7 @@ void AssetSwapTest::testGenericBondImplied() {
                               DateGeneration::Backward, false);
     Leg cmsBondLeg2 = CmsLeg(cmsBondSchedule2, vars.swapIndex)
         .withNotionals(vars.faceAmount)
-        .withPaymentDayCounter(Thirty360())
+        .withPaymentDayCounter(Thirty360(Thirty360::BondBasis))
         .withFixingDays(fixingDays)
         .withGearings(0.84)
         .inArrears(inArrears);
@@ -2031,13 +2024,14 @@ void AssetSwapTest::testGenericBondImplied() {
     }
 }
 
-
-void AssetSwapTest::testMASWWithGenericBond() {
+BOOST_AUTO_TEST_CASE(testMASWWithGenericBond) {
 
     BOOST_TEST_MESSAGE("Testing market asset swap against par asset swap "
                        "with generic bond...");
 
     using namespace asset_swap_test;
+
+    bool usingAtParCoupons = IborCoupon::Settings::instance().usingAtParCoupons();
 
     CommonVars vars;
 
@@ -2096,11 +2090,7 @@ void AssetSwapTest::testMASWWithGenericBond() {
     Real fixedBondMktAssetSwapSpread1 = fixedBondMktAssetSwap1.fairSpread();
 
     // see comment above
-    Real tolerance2; 
-    if (!IborCoupon::usingAtParCoupons())
-        tolerance2 = 1.0e-4;
-    else
-        tolerance2 = 1.0e-13;
+    Real tolerance2 = usingAtParCoupons ? 1.0e-13 : 1.0e-4;
 
     Real error1 =
         std::fabs(fixedBondMktAssetSwapSpread1-
@@ -2307,7 +2297,7 @@ void AssetSwapTest::testMASWWithGenericBond() {
                               DateGeneration::Backward, false);
     Leg cmsBondLeg1 = CmsLeg(cmsBondSchedule1, vars.swapIndex)
         .withNotionals(vars.faceAmount)
-        .withPaymentDayCounter(Thirty360())
+        .withPaymentDayCounter(Thirty360(Thirty360::BondBasis))
         .withFixingDays(fixingDays)
         .withCaps(0.055)
         .withFloors(0.025)
@@ -2366,7 +2356,7 @@ void AssetSwapTest::testMASWWithGenericBond() {
                               DateGeneration::Backward, false);
     Leg cmsBondLeg2 = CmsLeg(cmsBondSchedule2, vars.swapIndex)
         .withNotionals(vars.faceAmount)
-        .withPaymentDayCounter(Thirty360())
+        .withPaymentDayCounter(Thirty360(Thirty360::BondBasis))
         .withFixingDays(fixingDays)
         .withGearings(0.84)
         .inArrears(inArrears);
@@ -2509,7 +2499,7 @@ void AssetSwapTest::testMASWWithGenericBond() {
 }
 
 
-void AssetSwapTest::testZSpreadWithGenericBond() {
+BOOST_AUTO_TEST_CASE(testZSpreadWithGenericBond) {
 
     BOOST_TEST_MESSAGE("Testing clean and dirty price with null Z-spread "
                        "against theoretical prices...");
@@ -2719,7 +2709,7 @@ void AssetSwapTest::testZSpreadWithGenericBond() {
                               DateGeneration::Backward, false);
     Leg cmsBondLeg1 = CmsLeg(cmsBondSchedule1, vars.swapIndex)
         .withNotionals(vars.faceAmount)
-        .withPaymentDayCounter(Thirty360())
+        .withPaymentDayCounter(Thirty360(Thirty360::BondBasis))
         .withFixingDays(fixingDays)
         .withCaps(0.055)
         .withFloors(0.025)
@@ -2766,7 +2756,7 @@ void AssetSwapTest::testZSpreadWithGenericBond() {
                               DateGeneration::Backward, false);
     Leg cmsBondLeg2 = CmsLeg(cmsBondSchedule2, vars.swapIndex)
         .withNotionals(vars.faceAmount)
-        .withPaymentDayCounter(Thirty360())
+        .withPaymentDayCounter(Thirty360(Thirty360::BondBasis))
         .withFixingDays(fixingDays)
         .withGearings(0.84)
         .inArrears(inArrears);
@@ -2875,8 +2865,7 @@ void AssetSwapTest::testZSpreadWithGenericBond() {
     }
 }
 
-
-void AssetSwapTest::testSpecializedBondVsGenericBond() {
+BOOST_AUTO_TEST_CASE(testSpecializedBondVsGenericBond) {
 
     BOOST_TEST_MESSAGE("Testing clean and dirty prices for specialized bond"
                        " against equivalent generic bond...");
@@ -3188,7 +3177,7 @@ void AssetSwapTest::testSpecializedBondVsGenericBond() {
                               DateGeneration::Backward, false);
     Leg cmsBondLeg1 = CmsLeg(cmsBondSchedule1, vars.swapIndex)
         .withNotionals(vars.faceAmount)
-        .withPaymentDayCounter(Thirty360())
+        .withPaymentDayCounter(Thirty360(Thirty360::BondBasis))
         .withFixingDays(fixingDays)
         .withCaps(0.055)
         .withFloors(0.025)
@@ -3206,7 +3195,7 @@ void AssetSwapTest::testSpecializedBondVsGenericBond() {
     // equivalent specialized cms bond
     ext::shared_ptr<Bond> cmsSpecializedBond1(new
         CmsRateBond(settlementDays, vars.faceAmount, cmsBondSchedule1,
-                vars.swapIndex, Thirty360(),
+                vars.swapIndex, Thirty360(Thirty360::BondBasis),
                 Following, fixingDays,
                 std::vector<Real>(1,1.0), std::vector<Spread>(1,0.0),
                 std::vector<Rate>(1,0.055), std::vector<Rate>(1,0.025),
@@ -3258,7 +3247,7 @@ void AssetSwapTest::testSpecializedBondVsGenericBond() {
                               DateGeneration::Backward, false);
     Leg cmsBondLeg2 = CmsLeg(cmsBondSchedule2, vars.swapIndex)
         .withNotionals(vars.faceAmount)
-        .withPaymentDayCounter(Thirty360())
+        .withPaymentDayCounter(Thirty360(Thirty360::BondBasis))
         .withFixingDays(fixingDays)
         .withGearings(0.84)
         .inArrears(inArrears);
@@ -3275,7 +3264,7 @@ void AssetSwapTest::testSpecializedBondVsGenericBond() {
     // equivalent specialized cms bond
     ext::shared_ptr<Bond> cmsSpecializedBond2(new
         CmsRateBond(settlementDays, vars.faceAmount, cmsBondSchedule2,
-                vars.swapIndex, Thirty360(),
+                vars.swapIndex, Thirty360(Thirty360::BondBasis),
                 Following, fixingDays,
                 std::vector<Real>(1,0.84), std::vector<Spread>(1,0.0),
                 std::vector<Rate>(), std::vector<Rate>(),
@@ -3437,7 +3426,7 @@ void AssetSwapTest::testSpecializedBondVsGenericBond() {
 }
 
 
-void AssetSwapTest::testSpecializedBondVsGenericBondUsingAsw() {
+BOOST_AUTO_TEST_CASE(testSpecializedBondVsGenericBondUsingAsw) {
 
     BOOST_TEST_MESSAGE("Testing asset-swap prices and spreads for specialized"
                        " bond against equivalent generic bond...");
@@ -3890,7 +3879,7 @@ void AssetSwapTest::testSpecializedBondVsGenericBondUsingAsw() {
                               DateGeneration::Backward, false);
     Leg cmsBondLeg1 = CmsLeg(cmsBondSchedule1, vars.swapIndex)
         .withNotionals(vars.faceAmount)
-        .withPaymentDayCounter(Thirty360())
+        .withPaymentDayCounter(Thirty360(Thirty360::BondBasis))
         .withFixingDays(fixingDays)
         .withCaps(0.055)
         .withFloors(0.025)
@@ -3908,7 +3897,7 @@ void AssetSwapTest::testSpecializedBondVsGenericBondUsingAsw() {
     // equivalent specialized cms bond
     ext::shared_ptr<Bond> cmsSpecializedBond1(new
         CmsRateBond(settlementDays, vars.faceAmount, cmsBondSchedule1,
-                vars.swapIndex, Thirty360(),
+                vars.swapIndex, Thirty360(Thirty360::BondBasis),
                 Following, fixingDays,
                 std::vector<Real>(1,1.0), std::vector<Spread>(1,0.0),
                 std::vector<Rate>(1,0.055), std::vector<Rate>(1,0.025),
@@ -3993,7 +3982,7 @@ void AssetSwapTest::testSpecializedBondVsGenericBondUsingAsw() {
                               DateGeneration::Backward, false);
     Leg cmsBondLeg2 = CmsLeg(cmsBondSchedule2, vars.swapIndex)
         .withNotionals(vars.faceAmount)
-        .withPaymentDayCounter(Thirty360())
+        .withPaymentDayCounter(Thirty360(Thirty360::BondBasis))
         .withFixingDays(fixingDays)
         .withGearings(0.84)
         .inArrears(inArrears);
@@ -4010,7 +3999,7 @@ void AssetSwapTest::testSpecializedBondVsGenericBondUsingAsw() {
     // equivalent specialized cms bond
     ext::shared_ptr<Bond> cmsSpecializedBond2(new
         CmsRateBond(settlementDays, vars.faceAmount, cmsBondSchedule2,
-                vars.swapIndex, Thirty360(),
+                vars.swapIndex, Thirty360(Thirty360::BondBasis),
                 Following, fixingDays,
                 std::vector<Real>(1,0.84), std::vector<Spread>(1,0.0),
                 std::vector<Rate>(), std::vector<Rate>(),
@@ -4266,20 +4255,6 @@ void AssetSwapTest::testSpecializedBondVsGenericBondUsingAsw() {
     }
 }
 
+BOOST_AUTO_TEST_SUITE_END()
 
-test_suite* AssetSwapTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("AssetSwap tests");
-    suite->add(QUANTLIB_TEST_CASE(&AssetSwapTest::testConsistency));
-    suite->add(QUANTLIB_TEST_CASE(&AssetSwapTest::testImpliedValue));
-    suite->add(QUANTLIB_TEST_CASE(&AssetSwapTest::testMarketASWSpread));
-    suite->add(QUANTLIB_TEST_CASE(&AssetSwapTest::testZSpread));
-    suite->add(QUANTLIB_TEST_CASE(&AssetSwapTest::testGenericBondImplied));
-    suite->add(QUANTLIB_TEST_CASE(&AssetSwapTest::testMASWWithGenericBond));
-    suite->add(QUANTLIB_TEST_CASE(&AssetSwapTest::testZSpreadWithGenericBond));
-    suite->add(QUANTLIB_TEST_CASE(
-                           &AssetSwapTest::testSpecializedBondVsGenericBond));
-    suite->add(QUANTLIB_TEST_CASE(
-                   &AssetSwapTest::testSpecializedBondVsGenericBondUsingAsw));
-
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

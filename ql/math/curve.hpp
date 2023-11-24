@@ -17,28 +17,5 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-/*! \file curve.hpp
-    \brief Curve
-*/
-
-#ifndef quantlib_curve_hpp
-#define quantlib_curve_hpp
-
-#include <ql/types.hpp>
-#include <functional>
-
-namespace QuantLib {
-
-    //! abstract curve class
-    class Curve {
-      public:
-        typedef Real argument_type;
-        typedef Real result_type;
-        virtual ~Curve() = default;
-        virtual Real operator()(Real x) const = 0;
-    };
-
-}
-
-
-#endif
+// Deprecated in version 1.31
+#pragma message("Warning: this file is empty and will disappear in a future release. Do not include it.")

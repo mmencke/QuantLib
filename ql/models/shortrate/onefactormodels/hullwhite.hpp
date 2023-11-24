@@ -131,7 +131,7 @@ namespace QuantLib {
     class HullWhite::FittingParameter
         : public TermStructureFittingParameter {
       private:
-        class Impl : public Parameter::Impl {
+        class Impl final : public Parameter::Impl {
           public:
             Impl(Handle<YieldTermStructure> termStructure, Real a, Real sigma)
             : termStructure_(std::move(termStructure)), a_(a), sigma_(sigma) {}
@@ -140,8 +140,8 @@ namespace QuantLib {
                 Rate forwardRate =
                     termStructure_->forwardRate(t, t, Continuous, NoFrequency);
                 Real temp = a_ < std::sqrt(QL_EPSILON) ?
-                            sigma_*t :
-                            sigma_*(1.0 - std::exp(-a_*t))/a_;
+                            Real(sigma_*t) :
+                            Real(sigma_*(1.0 - std::exp(-a_*t))/a_);
                 return (forwardRate + 0.5*temp*temp);
             }
 

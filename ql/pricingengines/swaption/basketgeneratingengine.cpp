@@ -31,7 +31,7 @@ using std::fabs;
 
 namespace QuantLib {
 
-    Disposable<std::vector<ext::shared_ptr<BlackCalibrationHelper> > >
+    std::vector<ext::shared_ptr<BlackCalibrationHelper>>
     BasketGeneratingEngine::calibrationBasket(
         const ext::shared_ptr<Exercise>& exercise,
         const ext::shared_ptr<SwapIndex>& standardSwapBase,
@@ -87,7 +87,7 @@ namespace QuantLib {
                     atmVol = sec->volatility(atmStrike);
                 Real shift = sec->shift();
 
-                helper = ext::shared_ptr<SwaptionHelper>(new SwaptionHelper(
+                helper = ext::make_shared<SwaptionHelper>(
                     expiry, underlyingLastDate(),
                     Handle<Quote>(ext::make_shared<SimpleQuote>(atmVol)),
                     standardSwapBase->iborIndex(),
@@ -98,7 +98,7 @@ namespace QuantLib {
                         ? standardSwapBase->discountingTermStructure()
                         : standardSwapBase->forwardingTermStructure(),
                     BlackCalibrationHelper::RelativePriceError, Null<Real>(), 1.0,
-                    swaptionVolatility->volatilityType() ,shift));
+                    swaptionVolatility->volatilityType() ,shift);
 
                 break;
             }
@@ -111,7 +111,7 @@ namespace QuantLib {
                 const Real h = 0.0001; // finite difference step in $y$, make
                                        // this a parameter of the engine ?
                 Real zSpreadDsc =
-                    oas_.empty() ? 1.0
+                    oas_.empty() ? Real(1.0)
                                  : exp(-oas_->value() *
                                        onefactormodel_->termStructure()
                                            ->dayCounter()
@@ -215,7 +215,7 @@ namespace QuantLib {
 
                 Real vol = sec->volatility(solution[2]);
 
-                helper = ext::shared_ptr<SwaptionHelper>(new SwaptionHelper(
+                helper = ext::make_shared<SwaptionHelper>(
                     expiry, matPeriod,
                     Handle<Quote>(ext::make_shared<SimpleQuote>(
                                       vol)),
@@ -227,7 +227,7 @@ namespace QuantLib {
                         ? standardSwapBase->discountingTermStructure()
                         : standardSwapBase->forwardingTermStructure(),
                     BlackCalibrationHelper::RelativePriceError, solution[2],
-                    fabs(solution[0]), swaptionVolatility->volatilityType(), shift));
+                    fabs(solution[0]), swaptionVolatility->volatilityType(), shift);
                 break;
             }
 

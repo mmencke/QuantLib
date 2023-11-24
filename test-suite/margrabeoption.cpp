@@ -20,9 +20,9 @@
 #include "margrabeoption.hpp"
 #include "utilities.hpp"
 #include <ql/time/daycounters/actual360.hpp>
-#include <ql/experimental/exoticoptions/margrabeoption.hpp>
-#include <ql/experimental/exoticoptions/analyticamericanmargrabeengine.hpp>
-#include <ql/experimental/exoticoptions/analyticeuropeanmargrabeengine.hpp>
+#include <ql/instruments/margrabeoption.hpp>
+#include <ql/pricingengines/exotic/analyticamericanmargrabeengine.hpp>
+#include <ql/pricingengines/exotic/analyticeuropeanmargrabeengine.hpp>
 #include <ql/termstructures/volatility/equityfx/blackconstantvol.hpp>
 #include <ql/utilities/dataformatters.hpp>
 
@@ -288,8 +288,6 @@ void MargrabeOptionTest::testGreeks() {
 
     BOOST_TEST_MESSAGE("Testing analytic European exchange option greeks...");
 
-    SavedSettings backup;
-
     std::map<std::string,Real> calculated, expected, tolerance;
     tolerance["delta1"]  = 1.0e-5;
     tolerance["delta2"]  = 1.0e-5;
@@ -327,7 +325,7 @@ void MargrabeOptionTest::testGreeks() {
     ext::shared_ptr<SimpleQuote> vol2(new SimpleQuote(0.0));
     ext::shared_ptr<BlackVolTermStructure> volTS2 = flatVol(vol2, dc);
 
-    for (double residualTime : residualTimes) {
+    for (Real residualTime : residualTimes) {
         Date exDate = today + timeToDays(residualTime);
         ext::shared_ptr<Exercise> exercise(new EuropeanExercise(exDate));
 
@@ -359,7 +357,7 @@ void MargrabeOptionTest::testGreeks() {
 
             for (Size l = 0; l < LENGTH(underlyings1); l++) {
                 for (Size m=0; m<LENGTH(qRates1); m++) {
-                    for (double n : rRates) {
+                    for (Real n : rRates) {
                         for (Size p = 0; p < LENGTH(vols1); p++) {
                             Real u1 = underlyings1[l], u2 = underlyings2[l], u;
                             Rate q1 = qRates1[m], q2 = qRates2[m], r = n;

@@ -17,11 +17,9 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "fdcir.hpp"
-#include "fdheston.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/instruments/barrieroption.hpp>
-#include <ql/math/functional.hpp>
 #include <ql/models/equity/hestonmodel.hpp>
 #include <ql/pricingengines/barrier/fdhestonbarrierengine.hpp>
 #include <ql/pricingengines/vanilla/analyticeuropeanengine.hpp>
@@ -36,7 +34,11 @@
 using namespace QuantLib;
 using boost::unit_test_framework::test_suite;
 
-void FdCIRTest::testFdmCIRConvergence() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(FdCIRTest)
+
+BOOST_AUTO_TEST_CASE(testFdmCIRConvergence) {
     BOOST_TEST_MESSAGE("Testing FDM CIR convergence...");
 
     FdmSchemeDesc schemes[] = {
@@ -109,11 +111,7 @@ void FdCIRTest::testFdmCIRConvergence() {
     }
 }
 
-test_suite* FdCIRTest::suite(SpeedLevel speed) {
-    auto* suite = BOOST_TEST_SUITE("Finite Difference CIR tests");
+BOOST_AUTO_TEST_SUITE_END()
 
-    suite->add(QUANTLIB_TEST_CASE(&FdCIRTest::testFdmCIRConvergence));
-
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()
 

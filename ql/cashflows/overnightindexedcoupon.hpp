@@ -76,6 +76,7 @@ namespace QuantLib {
         //@{
         //! the date when the coupon is fully determined
         Date fixingDate() const override { return fixingDates_.back(); }
+        Real accruedAmount(const Date&) const override;
         //@}
         //! \name Visitability
         //@{
@@ -86,6 +87,8 @@ namespace QuantLib {
         mutable std::vector<Rate> fixings_;
         Size n_;
         std::vector<Time> dt_;
+
+        Rate averageRate(const Date& date) const;
     };
 
 
@@ -98,7 +101,7 @@ namespace QuantLib {
         OvernightLeg& withPaymentDayCounter(const DayCounter&);
         OvernightLeg& withPaymentAdjustment(BusinessDayConvention);
         OvernightLeg& withPaymentCalendar(const Calendar&);
-        OvernightLeg& withPaymentLag(Natural lag);
+        OvernightLeg& withPaymentLag(Integer lag);
         OvernightLeg& withGearings(Real gearing);
         OvernightLeg& withGearings(const std::vector<Real>& gearings);
         OvernightLeg& withSpreads(Spread spread);
@@ -112,12 +115,12 @@ namespace QuantLib {
         std::vector<Real> notionals_;
         DayCounter paymentDayCounter_;
         Calendar paymentCalendar_;
-        BusinessDayConvention paymentAdjustment_;
-        Natural paymentLag_;
+        BusinessDayConvention paymentAdjustment_ = Following;
+        Integer paymentLag_ = 0;
         std::vector<Real> gearings_;
         std::vector<Spread> spreads_;
-        bool telescopicValueDates_;
-        RateAveraging::Type averagingMethod_;
+        bool telescopicValueDates_ = false;
+        RateAveraging::Type averagingMethod_ = RateAveraging::Compound;
     };
 
 }

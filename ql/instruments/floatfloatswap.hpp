@@ -32,7 +32,7 @@
 #include <ql/instruments/vanillaswap.hpp>
 #include <ql/time/daycounter.hpp>
 #include <ql/time/schedule.hpp>
-#include <boost/optional.hpp>
+#include <ql/optional.hpp>
 
 namespace QuantLib {
 
@@ -46,7 +46,7 @@ namespace QuantLib {
         class results;
         class engine;
         FloatFloatSwap(
-            VanillaSwap::Type type,
+            Swap::Type type,
             Real nominal1,
             Real nominal2,
             const Schedule& schedule1,
@@ -65,11 +65,11 @@ namespace QuantLib {
             Real spread2 = 0.0,
             Real cappedRate2 = Null<Real>(),
             Real flooredRate2 = Null<Real>(),
-            const boost::optional<BusinessDayConvention>& paymentConvention1 = boost::none,
-            const boost::optional<BusinessDayConvention>& paymentConvention2 = boost::none);
+            const ext::optional<BusinessDayConvention>& paymentConvention1 = ext::nullopt,
+            const ext::optional<BusinessDayConvention>& paymentConvention2 = ext::nullopt);
 
         FloatFloatSwap(
-            VanillaSwap::Type type,
+            Swap::Type type,
             std::vector<Real> nominal1,
             std::vector<Real> nominal2,
             Schedule schedule1,
@@ -88,12 +88,12 @@ namespace QuantLib {
             std::vector<Real> spread2 = std::vector<Real>(),
             std::vector<Real> cappedRate2 = std::vector<Real>(),
             std::vector<Real> flooredRate2 = std::vector<Real>(),
-            const boost::optional<BusinessDayConvention>& paymentConvention1 = boost::none,
-            const boost::optional<BusinessDayConvention>& paymentConvention2 = boost::none);
+            const ext::optional<BusinessDayConvention>& paymentConvention1 = ext::nullopt,
+            const ext::optional<BusinessDayConvention>& paymentConvention2 = ext::nullopt);
 
         //! \name Inspectors
         //@{
-        VanillaSwap::Type type() const;
+        Swap::Type type() const;
         const std::vector<Real> &nominal1() const;
         const std::vector<Real> &nominal2() const;
 
@@ -132,10 +132,10 @@ namespace QuantLib {
         void fetchResults(const PricingEngine::results*) const override;
 
       private:
-        void init(boost::optional<BusinessDayConvention> paymentConvention1,
-                  boost::optional<BusinessDayConvention> paymentConvention2);
+        void init(ext::optional<BusinessDayConvention> paymentConvention1,
+                  ext::optional<BusinessDayConvention> paymentConvention2);
         void setupExpired() const override;
-        VanillaSwap::Type type_;
+        Swap::Type type_;
         std::vector<Real> nominal1_, nominal2_;
         Schedule schedule1_, schedule2_;
         ext::shared_ptr<InterestRateIndex> index1_, index2_;
@@ -152,7 +152,7 @@ namespace QuantLib {
     class FloatFloatSwap::arguments : public Swap::arguments {
       public:
         arguments() = default;
-        VanillaSwap::Type type = VanillaSwap::Receiver;
+        Swap::Type type = Swap::Receiver;
         std::vector<Real> nominal1, nominal2;
 
         std::vector<Date> leg1ResetDates, leg1FixingDates, leg1PayDates;
@@ -184,7 +184,7 @@ namespace QuantLib {
 
     // inline definitions
 
-    inline VanillaSwap::Type FloatFloatSwap::type() const { return type_; }
+    inline Swap::Type FloatFloatSwap::type() const { return type_; }
 
     inline const std::vector<Real> &FloatFloatSwap::nominal1() const {
         return nominal1_;

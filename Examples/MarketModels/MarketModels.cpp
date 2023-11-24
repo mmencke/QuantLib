@@ -18,7 +18,7 @@ FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
 #include <ql/qldefines.hpp>
-#ifdef BOOST_MSVC
+#if !defined(BOOST_ALL_NO_LIB) && defined(BOOST_MSVC)
 #  include <ql/auto_link.hpp>
 #endif
 #include <ql/models/marketmodels/marketmodel.hpp>
@@ -61,7 +61,6 @@ FOR A PARTICULAR PURPOSE.  See the license for more details.
 #include <ql/math/statistics/convergencestatistics.hpp>
 #include <ql/termstructures/volatility/abcd.hpp>
 #include <ql/termstructures/volatility/abcdcalibration.hpp>
-#include <ql/math/functional.hpp>
 #include <ql/math/optimization/simplex.hpp>
 #include <ql/quotes/simplequote.hpp>
 #include <sstream>
@@ -70,16 +69,7 @@ FOR A PARTICULAR PURPOSE.  See the license for more details.
 
 using namespace QuantLib;
 
-#if defined(QL_ENABLE_SESSIONS)
-namespace QuantLib {
-
-    ThreadKey sessionId() { return {}; }
-
-}
-#endif
-
-
-std::vector<std::vector<Matrix> >
+std::vector<std::vector<Matrix>>
 theVegaBumps(bool factorwiseBumping, const ext::shared_ptr<MarketModel>& marketModel, bool doCaps) {
     Real multiplierCutOff = 50.0;
     Real projectionTolerance = 1E-4;
@@ -124,7 +114,7 @@ theVegaBumps(bool factorwiseBumping, const ext::shared_ptr<MarketModel>& marketM
         multiplierCutOff, // if vector length grows by more than this discard
         projectionTolerance);      // if vector projection before scaling less than this discard
 
-    std::vector<std::vector<Matrix> > theBumps;
+    std::vector<std::vector<Matrix>> theBumps;
 
     bumpFinder.GetVegaBumps(theBumps);
 
@@ -175,8 +165,8 @@ int Bermudan()
     SwapRateTrigger naifStrategy(rateTimes, swapTriggers, exerciseTimes);
 
     // Longstaff-Schwartz exercise strategy
-    std::vector<std::vector<NodeData> > collectedData;
-    std::vector<std::vector<Real> > basisCoefficients;
+    std::vector<std::vector<NodeData>> collectedData;
+    std::vector<std::vector<Real>> basisCoefficients;
 
     // control that does nothing, need it because some control is expected
     NothingExerciseValue control(rateTimes);
@@ -244,13 +234,13 @@ int Bermudan()
 
     FlatVol  calibration(
         volatilities,
-        ext::shared_ptr<PiecewiseConstantCorrelation>(new  ExponentialForwardCorrelation(correlations)),
+        ext::make_shared<ExponentialForwardCorrelation>(correlations),
         evolution,
         numberOfFactors,
         initialRates,
         displacements);
 
-    ext::shared_ptr<MarketModel> marketModel(new FlatVol(calibration));
+    auto marketModel = ext::make_shared<FlatVol>(calibration);
 
     // we use a factory since there is data that will only be known later
     SobolBrownianGeneratorFactory generatorFactory(
@@ -264,7 +254,7 @@ int Bermudan()
         numeraires   // numeraires for each step
         );
 
-    ext::shared_ptr<MarketModelEvolver> evolverPtr(new LogNormalFwdRatePc(evolver));
+    auto evolverPtr = ext::make_shared<LogNormalFwdRatePc>(evolver);
 
     int t1= clock();
 
@@ -323,7 +313,7 @@ int Bermudan()
 
     std::vector<Real> means(stats.mean());
 
-    for (double mean : means)
+    for (Real mean : means)
         std::cout << mean << "\n";
 
     std::cout << " time to build strategy, " << (t2-t1)/static_cast<Real>(CLOCKS_PER_SEC)<< ", seconds.\n";
@@ -363,7 +353,7 @@ int Bermudan()
         Clone<MarketModelPathwiseMultiProduct> callableProductPathwisePtr(callableProductPathwise.clone());
 
 
-        std::vector<std::vector<Matrix> > theBumps(theVegaBumps(allowFactorwiseBumping,
+        std::vector<std::vector<Matrix>> theBumps(theVegaBumps(allowFactorwiseBumping,
             marketModel,
             doCaps));
 
@@ -407,12 +397,12 @@ int Bermudan()
 
     MTBrownianGeneratorFactory uFactory(seed+142);
 
-    ext::shared_ptr<MarketModelEvolver> upperEvolver(new LogNormalFwdRatePc( ext::shared_ptr<MarketModel>(new FlatVol(calibration)),
+    auto upperEvolver = ext::make_shared<LogNormalFwdRatePc>(ext::make_shared<FlatVol>(calibration),
             uFactory,
             numeraires   // numeraires for each step
-            ));
+            );
 
-    std::vector<ext::shared_ptr<MarketModelEvolver> > innerEvolvers;
+    std::vector<ext::shared_ptr<MarketModelEvolver>> innerEvolvers;
 
     std::valarray<bool> isExerciseTime =   isInSubset(evolution.evolutionTimes(),    exerciseStrategy.exerciseTimes());
 
@@ -421,10 +411,10 @@ int Bermudan()
         if (isExerciseTime[s])
         {
             MTBrownianGeneratorFactory iFactory(seed+s);
-            ext::shared_ptr<MarketModelEvolver> e =ext::shared_ptr<MarketModelEvolver> (static_cast<MarketModelEvolver*>(new   LogNormalFwdRatePc(ext::shared_ptr<MarketModel>(new FlatVol(calibration)),
+            auto e = ext::make_shared<LogNormalFwdRatePc>(ext::make_shared<FlatVol>(calibration),
                     uFactory,
-                    numeraires ,  // numeraires for each step
-                    s)));
+                    numeraires,  // numeraires for each step
+                    s);
 
             innerEvolvers.push_back(e);
         }
@@ -508,8 +498,8 @@ int InverseFloater(Real rateLevel)
     SwapRateTrigger naifStrategy(rateTimes, swapTriggers, exerciseTimes);
 
     // Longstaff-Schwartz exercise strategy
-    std::vector<std::vector<NodeData> > collectedData;
-    std::vector<std::vector<Real> > basisCoefficients;
+    std::vector<std::vector<NodeData>> collectedData;
+    std::vector<std::vector<Real>> basisCoefficients;
 
     // control that does nothing, need it because some control is expected
     NothingExerciseValue control(rateTimes);
@@ -584,13 +574,13 @@ int InverseFloater(Real rateLevel)
 
     FlatVol  calibration(
         volatilities,
-        ext::shared_ptr<PiecewiseConstantCorrelation>(new  ExponentialForwardCorrelation(correlations)),
+        ext::make_shared<ExponentialForwardCorrelation>(correlations),
         evolution,
         numberOfFactors,
         initialRates,
         displacements);
 
-    ext::shared_ptr<MarketModel> marketModel(new FlatVol(calibration));
+    auto marketModel = ext::make_shared<FlatVol>(calibration);
 
     // we use a factory since there is data that will only be known later
     SobolBrownianGeneratorFactory generatorFactory(
@@ -604,7 +594,7 @@ int InverseFloater(Real rateLevel)
         numeraires   // numeraires for each step
         );
 
-    ext::shared_ptr<MarketModelEvolver> evolverPtr(new LogNormalFwdRatePc(evolver));
+    auto evolverPtr = ext::make_shared<LogNormalFwdRatePc>(evolver);
 
     int t1= clock();
 
@@ -656,7 +646,7 @@ int InverseFloater(Real rateLevel)
 
     std::vector<Real> means(stats.mean());
 
-    for (double mean : means)
+    for (Real mean : means)
         std::cout << mean << "\n";
 
     std::cout << " time to build strategy, " << (t2-t1)/static_cast<Real>(CLOCKS_PER_SEC)<< ", seconds.\n";
@@ -699,7 +689,7 @@ int InverseFloater(Real rateLevel)
         Clone<MarketModelPathwiseMultiProduct> callableProductPathwisePtr(callableProductPathwise.clone());
 
 
-        std::vector<std::vector<Matrix> > theBumps(theVegaBumps(allowFactorwiseBumping,
+        std::vector<std::vector<Matrix>> theBumps(theVegaBumps(allowFactorwiseBumping,
             marketModel,
             doCaps));
 
@@ -745,12 +735,12 @@ int InverseFloater(Real rateLevel)
     MTBrownianGeneratorFactory uFactory(seed+142);
 
 
-    ext::shared_ptr<MarketModelEvolver> upperEvolver(new LogNormalFwdRatePc( ext::shared_ptr<MarketModel>(new FlatVol(calibration)),
+    auto upperEvolver = ext::make_shared<LogNormalFwdRatePc>(ext::make_shared<FlatVol>(calibration),
             uFactory,
             numeraires   // numeraires for each step
-            ));
+            );
 
-    std::vector<ext::shared_ptr<MarketModelEvolver> > innerEvolvers;
+    std::vector<ext::shared_ptr<MarketModelEvolver>> innerEvolvers;
 
     std::valarray<bool> isExerciseTime =   isInSubset(evolution.evolutionTimes(),    exerciseStrategy.exerciseTimes());
 
@@ -759,10 +749,10 @@ int InverseFloater(Real rateLevel)
         if (isExerciseTime[s])
         {
             MTBrownianGeneratorFactory iFactory(seed+s);
-            ext::shared_ptr<MarketModelEvolver> e =ext::shared_ptr<MarketModelEvolver> (static_cast<MarketModelEvolver*>(new   LogNormalFwdRatePc(ext::shared_ptr<MarketModel>(new FlatVol(calibration)),
+            auto e = ext::make_shared<LogNormalFwdRatePc>(ext::make_shared<FlatVol>(calibration),
                     uFactory,
                     numeraires ,  // numeraires for each step
-                    s)));
+                    s);
 
             innerEvolvers.push_back(e);
         }

@@ -36,11 +36,6 @@
 #include <ql/methods/finitedifferences/meshers/concentrating1dmesher.hpp>
 #include <cmath>
 
-// asinh is missing in WIN32 (and possibly on other compilers)
-#if !defined(QL_HAVE_ASINH)
-#define asinh(x) std::log(x + std::sqrt(x * x + 1))
-#endif
-
 namespace QuantLib {
 
     Concentrating1dMesher::Concentrating1dMesher(
@@ -68,8 +63,8 @@ namespace QuantLib {
         if (cPoint != Null<Real>()) {
             std::vector<Real> u, z;
             ext::shared_ptr<Interpolation> transform;
-            const Real c1 = asinh((start - cPoint) / density);
-            const Real c2 = asinh((end - cPoint) / density);
+            const Real c1 = std::asinh((start - cPoint) / density);
+            const Real c2 = std::asinh((end - cPoint) / density);
             if (requireCPoint) {
                 u.push_back(0.0);
                 z.push_back(0.0);
@@ -127,7 +122,7 @@ namespace QuantLib {
             Real jac(Real a, Real, Real y) const {
                 Real s=0.0;
                 for (Size i=0; i < points_.size(); ++i) {
-                    s+=1.0/(betas_[i] + square<Real>()(y - points_[i]));
+                    s+=1.0/(betas_[i] + squared(y - points_[i]));
                 }
                 return a/std::sqrt(s);
             }
@@ -154,20 +149,20 @@ namespace QuantLib {
         std::vector<Real> points, betas;
         for (const auto& cPoint : cPoints) {
             points.push_back(ext::get<0>(cPoint));
-            betas.push_back(square<Real>()(ext::get<1>(cPoint) * (end - start)));
+            betas.push_back(squared(ext::get<1>(cPoint) * (end - start)));
         }
 
         // get scaling factor a so that y(1) = end
         Real aInit = 0.0;
         for (Size i=0; i < points.size(); ++i) {
-            const Real c1 = asinh((start-points[i])/betas[i]);
-            const Real c2 = asinh((end-points[i])/betas[i]);
+            const Real c1 = std::asinh((start-points[i])/betas[i]);
+            const Real c2 = std::asinh((end-points[i])/betas[i]);
             aInit+=(c2-c1)/points.size();
         }
 
         OdeIntegrationFct fct(points, betas, tol);
         const Real a = Brent().solve(
-            [&](Real x) { return fct.solve(x, start, 0.0, 1.0) - end; },
+            [&](Real x) -> Real { return fct.solve(x, start, 0.0, 1.0) - end; },
             tol, aInit, 0.1*aInit);
 
         // solve ODE for all grid points
@@ -197,7 +192,7 @@ namespace QuantLib {
                         std::lower_bound(y.begin(), y.end(), points[i]));
 
                 const Real e = Brent().solve(
-                    [&](Real x){ return odeSolution(x, true) - points[i]; },
+                    [&](Real x) -> Real { return odeSolution(x, true) - points[i]; },
                     QL_EPSILON, x[j], 0.5/size);
 
                 w.emplace_back(std::min(x[size - 2], x[j]), e);

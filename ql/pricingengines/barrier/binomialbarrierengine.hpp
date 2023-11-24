@@ -31,6 +31,7 @@
 #include <ql/processes/blackscholesprocess.hpp>
 #include <ql/termstructures/volatility/equityfx/blackconstantvol.hpp>
 #include <ql/termstructures/yield/flatforward.hpp>
+#include <type_traits>
 #include <utility>
 
 namespace QuantLib {
@@ -86,13 +87,20 @@ namespace QuantLib {
     template <class T, class D>
     void BinomialBarrierEngine<T,D>::calculate() const {
 
+        ext::shared_ptr<StrikedTypePayoff> payoff =
+            ext::dynamic_pointer_cast<StrikedTypePayoff>(arguments_.payoff);
+        QL_REQUIRE(payoff, "non-striked payoff given");
+        QL_REQUIRE(payoff->strike() > 0.0, "strike must be positive");
+
+        Real s0 = process_->stateVariable()->value();
+        QL_REQUIRE(s0 > 0.0, "negative or null underlying given");
+        QL_REQUIRE(!triggered(s0), "barrier touched");
+
         DayCounter rfdc  = process_->riskFreeRate()->dayCounter();
         DayCounter divdc = process_->dividendYield()->dayCounter();
         DayCounter voldc = process_->blackVolatility()->dayCounter();
         Calendar volcal = process_->blackVolatility()->calendar();
 
-        Real s0 = process_->stateVariable()->value();
-        QL_REQUIRE(s0 > 0.0, "negative or null underlying given");
         Volatility v = process_->blackVolatility()->blackVol(
             arguments_.exercise->lastDate(), s0);
         Date maturityDate = arguments_.exercise->lastDate();
@@ -113,10 +121,6 @@ namespace QuantLib {
             ext::shared_ptr<BlackVolTermStructure>(
                 new BlackConstantVol(referenceDate, volcal, v, voldc)));
 
-        ext::shared_ptr<StrikedTypePayoff> payoff =
-            ext::dynamic_pointer_cast<StrikedTypePayoff>(arguments_.payoff);
-        QL_REQUIRE(payoff, "non-striked payoff given");
-
         Time maturity = rfdc.yearFraction(referenceDate, maturityDate);
 
         ext::shared_ptr<StochasticProcess1D> bs(
@@ -130,7 +134,7 @@ namespace QuantLib {
         // Note: this approach works only for CoxRossRubinstein lattices, so
         // is disabled if T is not a CoxRossRubinstein or derived from it.
         Size optimum_steps = timeSteps_;
-        if (boost::is_base_of<CoxRossRubinstein, T>::value && 
+        if (std::is_base_of<CoxRossRubinstein, T>::value &&
             maxTimeSteps_ > timeSteps_ && s0 > 0 && arguments_.barrier > 0) {
             Real divisor;
             if (s0 > arguments_.barrier)

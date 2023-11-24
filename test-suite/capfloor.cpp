@@ -19,7 +19,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "capfloor.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/instruments/capfloor.hpp>
 #include <ql/instruments/vanillaswap.hpp>
@@ -57,10 +57,6 @@ namespace capfloor_test {
         Natural fixingDays;
         RelinkableHandle<YieldTermStructure> termStructure;
 
-        // cleanup
-
-        SavedSettings backup;
-
         // setup
         CommonVars()
         : nominals(1,100) {
@@ -68,8 +64,7 @@ namespace capfloor_test {
             index = ext::shared_ptr<IborIndex>(new Euribor6M(termStructure));
             calendar = index->fixingCalendar();
             convention = ModifiedFollowing;
-            Date today = calendar.adjust(Date::todaysDate());
-            Settings::instance().evaluationDate() = today;
+            Date today = Settings::instance().evaluationDate();
             Natural settlementDays = 2;
             fixingDays = 2;
             settlement = calendar.advance(today,settlementDays,Days);
@@ -150,8 +145,11 @@ namespace capfloor_test {
 
 }
 
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
 
-void CapFloorTest::testVega() {
+BOOST_AUTO_TEST_SUITE(CapFloorTest)
+
+BOOST_AUTO_TEST_CASE(testVega) {
 
     BOOST_TEST_MESSAGE("Testing cap/floor vega...");
 
@@ -169,8 +167,8 @@ void CapFloorTest::testVega() {
     static const Real tolerance = 0.005;
 
     for (int length : lengths) {
-        for (double vol : vols) {
-            for (double strike : strikes) {
+        for (Real vol : vols) {
+            for (Real strike : strikes) {
                 for (auto& type : types) {
                     Leg leg = vars.makeLeg(startDate, length);
                     ext::shared_ptr<CapFloor> capFloor = vars.makeCapFloor(type, leg, strike, vol);
@@ -202,7 +200,7 @@ void CapFloorTest::testVega() {
     }
 }
 
-void CapFloorTest::testStrikeDependency() {
+BOOST_AUTO_TEST_CASE(testStrikeDependency) {
 
     BOOST_TEST_MESSAGE("Testing cap/floor dependency on strike...");
 
@@ -217,10 +215,10 @@ void CapFloorTest::testStrikeDependency() {
     Date startDate = vars.termStructure->referenceDate();
 
     for (int& length : lengths) {
-        for (double vol : vols) {
+        for (Real vol : vols) {
             // store the results for different strikes...
             std::vector<Real> cap_values, floor_values;
-            for (double strike : strikes) {
+            for (Real strike : strikes) {
                 Leg leg = vars.makeLeg(startDate, length);
                 ext::shared_ptr<Instrument> cap =
                     vars.makeCapFloor(CapFloor::Cap, leg, strike, vol);
@@ -230,7 +228,7 @@ void CapFloorTest::testStrikeDependency() {
                 floor_values.push_back(floor->NPV());
             }
             // and check that they go the right way
-            auto it = std::adjacent_find(cap_values.begin(), cap_values.end(), std::less<Real>());
+            auto it = std::adjacent_find(cap_values.begin(), cap_values.end(), std::less<>());
             if (it != cap_values.end()) {
                 Size n = it - cap_values.begin();
                 BOOST_FAIL("NPV is increasing with the strike in a cap: \n"
@@ -242,8 +240,7 @@ void CapFloorTest::testStrikeDependency() {
                            << " at strike: " << io::rate(strikes[n + 1]));
             }
             // same for floors
-            it = std::adjacent_find(floor_values.begin(),floor_values.end(),
-                                    std::greater<Real>());
+            it = std::adjacent_find(floor_values.begin(), floor_values.end(), std::greater<>());
             if (it != floor_values.end()) {
                 Size n = it - floor_values.begin();
                 BOOST_FAIL("NPV is decreasing with the strike in a floor: \n"
@@ -258,7 +255,7 @@ void CapFloorTest::testStrikeDependency() {
     }
 }
 
-void CapFloorTest::testConsistency() {
+BOOST_AUTO_TEST_CASE(testConsistency) {
 
     BOOST_TEST_MESSAGE("Testing consistency between cap, floor and collar...");
 
@@ -274,9 +271,9 @@ void CapFloorTest::testConsistency() {
     Date startDate = vars.termStructure->referenceDate();
 
     for (int& length : lengths) {
-        for (double& cap_rate : cap_rates) {
-            for (double& floor_rate : floor_rates) {
-                for (double vol : vols) {
+        for (Real& cap_rate : cap_rates) {
+            for (Real& floor_rate : floor_rates) {
+                for (Real vol : vols) {
 
                     Leg leg = vars.makeLeg(startDate, length);
                     ext::shared_ptr<CapFloor> cap =
@@ -365,7 +362,7 @@ void CapFloorTest::testConsistency() {
     }
 }
 
-void CapFloorTest::testParity() {
+BOOST_AUTO_TEST_CASE(testParity) {
 
     BOOST_TEST_MESSAGE("Testing cap/floor parity...");
 
@@ -380,8 +377,8 @@ void CapFloorTest::testParity() {
     Date startDate = vars.termStructure->referenceDate();
 
     for (int& length : lengths) {
-        for (double strike : strikes) {
-            for (double vol : vols) {
+        for (Real strike : strikes) {
+            for (Real vol : vols) {
 
                 Leg leg = vars.makeLeg(startDate, length);
                 ext::shared_ptr<Instrument> cap =
@@ -391,12 +388,11 @@ void CapFloorTest::testParity() {
                 Date maturity = vars.calendar.advance(startDate, length, Years, vars.convention);
                 Schedule schedule(startDate, maturity, Period(vars.frequency), vars.calendar,
                                   vars.convention, vars.convention, DateGeneration::Forward, false);
-                VanillaSwap swap(VanillaSwap::Payer, vars.nominals[0], schedule, strike,
+                VanillaSwap swap(Swap::Payer, vars.nominals[0], schedule, strike,
                                  vars.index->dayCounter(), schedule, vars.index, 0.0,
                                  vars.index->dayCounter());
                 swap.setPricingEngine(
                     ext::shared_ptr<PricingEngine>(new DiscountingSwapEngine(vars.termStructure)));
-                // FLOATING_POINT_EXCEPTION
                 if (std::fabs((cap->NPV() - floor->NPV()) - swap.NPV()) > 1.0e-10) {
                     BOOST_FAIL("put/call parity violated:\n"
                                << "    length:      " << length << " years\n"
@@ -411,7 +407,7 @@ void CapFloorTest::testParity() {
     }
 }
 
-void CapFloorTest::testATMRate() {
+BOOST_AUTO_TEST_CASE(testATMRate) {
 
     BOOST_TEST_MESSAGE("Testing cap/floor ATM rate...");
 
@@ -433,8 +429,8 @@ void CapFloorTest::testATMRate() {
                           vars.convention,vars.convention,
                           DateGeneration::Forward,false);
 
-        for (double strike : strikes) {
-            for (double vol : vols) {
+        for (Real strike : strikes) {
+            for (Real vol : vols) {
                 ext::shared_ptr<CapFloor> cap = vars.makeCapFloor(CapFloor::Cap, leg, strike, vol);
                 ext::shared_ptr<CapFloor> floor =
                     vars.makeCapFloor(CapFloor::Floor, leg, strike, vol);
@@ -449,7 +445,7 @@ void CapFloorTest::testATMRate() {
                                << "   floor ATM rate:" << floorATMRate << "\n"
                                << "   relative Error:"
                                << relativeError(capATMRate, floorATMRate, capATMRate) * 100 << "%");
-                VanillaSwap swap(VanillaSwap::Payer, vars.nominals[0],
+                VanillaSwap swap(Swap::Payer, vars.nominals[0],
                                  schedule, floorATMRate,
                                  vars.index->dayCounter(),
                                  schedule, vars.index, 0.0,
@@ -469,8 +465,7 @@ void CapFloorTest::testATMRate() {
     }
 }
 
-
-void CapFloorTest::testImpliedVolatility() {
+BOOST_AUTO_TEST_CASE(testImpliedVolatility) {
 
     BOOST_TEST_MESSAGE("Testing implied term volatility for cap and floor...");
 
@@ -493,12 +488,12 @@ void CapFloorTest::testImpliedVolatility() {
         Leg leg = vars.makeLeg(vars.settlement, length);
 
         for (auto& type : types) {
-            for (double strike : strikes) {
+            for (Real strike : strikes) {
 
                 ext::shared_ptr<CapFloor> capfloor = vars.makeCapFloor(type, leg, strike, 0.0);
 
-                for (double r : rRates) {
-                    for (double v : vols) {
+                for (Real r : rRates) {
+                    for (Real v : vols) {
 
                         vars.termStructure.linkTo(flatRate(vars.settlement, r, Actual360()));
                         capfloor->setPricingEngine(vars.makeEngine(v));
@@ -555,7 +550,7 @@ void CapFloorTest::testImpliedVolatility() {
     }
 }
 
-void CapFloorTest::testCachedValue() {
+BOOST_AUTO_TEST_CASE(testCachedValue) {
 
     BOOST_TEST_MESSAGE("Testing Black cap/floor price against cached values...");
 
@@ -575,7 +570,7 @@ void CapFloorTest::testCachedValue() {
                                                             0.03,0.20);
 
     Real cachedCapNPV, cachedFloorNPV ;
-    if (!IborCoupon::usingAtParCoupons()) {
+    if (!IborCoupon::Settings::instance().usingAtParCoupons()) {
         // index fixing price
         cachedCapNPV   = 6.87630307745,
         cachedFloorNPV = 2.65796764715;
@@ -601,7 +596,7 @@ void CapFloorTest::testCachedValue() {
             << "    expected:   " << cachedFloorNPV);
 }
 
-void CapFloorTest::testCachedValueFromOptionLets() {
+BOOST_AUTO_TEST_CASE(testCachedValueFromOptionLets) {
 
     BOOST_TEST_MESSAGE("Testing Black cap/floor price as a sum of optionlets prices against cached values...");
 
@@ -626,7 +621,7 @@ void CapFloorTest::testCachedValueFromOptionLets() {
          calculatedFloorletsNPV = 0.0;
 
     Real cachedCapNPV, cachedFloorNPV;
-    if (IborCoupon::usingAtParCoupons()) {
+    if (IborCoupon::Settings::instance().usingAtParCoupons()) {
         cachedCapNPV = 6.87570026732;
         cachedFloorNPV = 2.65812927959;
     } else {
@@ -647,11 +642,11 @@ void CapFloorTest::testCachedValueFromOptionLets() {
             << "    calculated: " << capletPrices.size() << " caplet prices\n"
             << "    expected:   " << 40);
 
-    for (double capletPrice : capletPrices) {
+    for (Real capletPrice : capletPrices) {
         calculatedCapletsNPV += capletPrice;
     }
 
-    for (double floorletPrice : floorletPrices) {
+    for (Real floorletPrice : floorletPrices) {
         calculatedFloorletsNPV += floorletPrice;
     }
 
@@ -670,7 +665,7 @@ void CapFloorTest::testCachedValueFromOptionLets() {
             << "    expected:   " << cachedFloorNPV);
 }
 
-void CapFloorTest::testOptionLetsDelta() {
+BOOST_AUTO_TEST_CASE(testOptionLetsDelta) {
 
     BOOST_TEST_MESSAGE("Testing Black caplet/floorlet delta coefficients against finite difference values...");
 
@@ -793,7 +788,7 @@ void CapFloorTest::testOptionLetsDelta() {
 
 }
 
-void CapFloorTest::testBachelierOptionLetsDelta() {
+BOOST_AUTO_TEST_CASE(testBachelierOptionLetsDelta) {
 
     BOOST_TEST_MESSAGE("Testing Bachelier caplet/floorlet delta coefficients against finite difference values...");
 
@@ -919,19 +914,6 @@ void CapFloorTest::testBachelierOptionLetsDelta() {
 
 }
 
-test_suite* CapFloorTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Cap and floor tests");
-    suite->add(QUANTLIB_TEST_CASE(&CapFloorTest::testStrikeDependency));
-    suite->add(QUANTLIB_TEST_CASE(&CapFloorTest::testConsistency));
-    // FLOATING_POINT_EXCEPTION
-    suite->add(QUANTLIB_TEST_CASE(&CapFloorTest::testParity));
-    suite->add(QUANTLIB_TEST_CASE(&CapFloorTest::testVega));
-    suite->add(QUANTLIB_TEST_CASE(&CapFloorTest::testATMRate));
-    suite->add(QUANTLIB_TEST_CASE(&CapFloorTest::testImpliedVolatility));
-    suite->add(QUANTLIB_TEST_CASE(&CapFloorTest::testCachedValue));
-    suite->add(QUANTLIB_TEST_CASE(&CapFloorTest::testCachedValueFromOptionLets));
-    suite->add(QUANTLIB_TEST_CASE(&CapFloorTest::testOptionLetsDelta));
-    suite->add(QUANTLIB_TEST_CASE(&CapFloorTest::testBachelierOptionLetsDelta));
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE_END()

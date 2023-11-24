@@ -17,8 +17,8 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-/*! \file discretizedbarrieroption.hpp
-    \brief discretized barrier option
+/*! \file discretizeddoublebarrieroption.hpp
+    \brief discretized double barrier option
 */
 
 #ifndef quantlib_discretized_double_barrier_option_h
@@ -26,7 +26,7 @@
 
 #include <ql/discretizedasset.hpp>
 #include <ql/methods/lattices/bsmlattice.hpp>
-#include <ql/experimental/barrieroption/doublebarrieroption.hpp>
+#include <ql/instruments/doublebarrieroption.hpp>
 #include <ql/pricingengines/vanilla/discretizedvanillaoption.hpp>
 
 namespace QuantLib {

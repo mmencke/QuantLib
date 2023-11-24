@@ -9,6 +9,8 @@
  Copyright (C) 2020 Piotr Siejda
  Copyright (C) 2020 Leonardo Arcari
  Copyright (C) 2020 Kline s.r.l.
+ Copyright (C) 2022 Skandinaviska Enskilda Banken AB (publ)
+ Copyright (C) 2023 Jonghee Lee
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -24,13 +26,14 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "calendars.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/errors.hpp>
 #include <ql/time/calendar.hpp>
 #include <ql/time/calendars/bespokecalendar.hpp>
 #include <ql/time/calendars/brazil.hpp>
 #include <ql/time/calendars/china.hpp>
+#include <ql/time/calendars/denmark.hpp>
 #include <ql/time/calendars/germany.hpp>
 #include <ql/time/calendars/italy.hpp>
 #include <ql/time/calendars/japan.hpp>
@@ -40,12 +43,17 @@
 #include <ql/time/calendars/target.hpp>
 #include <ql/time/calendars/unitedkingdom.hpp>
 #include <ql/time/calendars/unitedstates.hpp>
+#include <ql/indexes/ibor/sofr.hpp>
 #include <fstream>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
-void CalendarTest::testModifiedCalendars() {
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
+
+BOOST_AUTO_TEST_SUITE(CalendarTest)
+
+BOOST_AUTO_TEST_CASE(testModifiedCalendars) {
 
     BOOST_TEST_MESSAGE("Testing calendar modification...");
 
@@ -105,8 +113,7 @@ void CalendarTest::testModifiedCalendars() {
         BOOST_FAIL(d2 << " still a holiday");
 }
 
-
-void CalendarTest::testJointCalendars() {
+BOOST_AUTO_TEST_CASE(testJointCalendars) {
 
     BOOST_TEST_MESSAGE("Testing joint calendars...");
 
@@ -181,7 +188,7 @@ void CalendarTest::testJointCalendars() {
     }
 }
 
-void CalendarTest::testUSSettlement() {
+BOOST_AUTO_TEST_CASE(testUSSettlement) {
     BOOST_TEST_MESSAGE("Testing US settlement holiday list...");
 
     std::vector<Date> expectedHol;
@@ -240,7 +247,7 @@ void CalendarTest::testUSSettlement() {
     }
 }
 
-void CalendarTest::testUSGovernmentBondMarket() {
+BOOST_AUTO_TEST_CASE(testUSGovernmentBondMarket) {
     BOOST_TEST_MESSAGE("Testing US government bond market holiday list...");
 
     std::vector<Date> expectedHol;
@@ -270,7 +277,7 @@ void CalendarTest::testUSGovernmentBondMarket() {
                                  << hol.size() << " calculated holidays");
 }
 
-void CalendarTest::testUSNewYorkStockExchange() {
+BOOST_AUTO_TEST_CASE(testUSNewYorkStockExchange) {
     BOOST_TEST_MESSAGE("Testing New York Stock Exchange holiday list...");
 
     std::vector<Date> expectedHol;
@@ -366,7 +373,21 @@ void CalendarTest::testUSNewYorkStockExchange() {
     }
 }
 
-void CalendarTest::testTARGET() {
+BOOST_AUTO_TEST_CASE(testSOFR) {
+    BOOST_TEST_MESSAGE("Testing extra non-fixing day for SOFR...");
+
+    auto fedCalendar = UnitedStates(UnitedStates::GovernmentBond);
+    auto testDate = Date(7, April, 2023); // Good Friday 2023 was only a half close but SOFR didn't fix
+
+    if (fedCalendar.isHoliday(testDate))
+        BOOST_ERROR(testDate << " should not be a holiday for " << fedCalendar.name());
+
+    auto sofr = Sofr();
+    if (sofr.isValidFixingDate(testDate))
+        BOOST_ERROR(testDate << " should not be a fixing date for " << sofr.name());
+}
+
+BOOST_AUTO_TEST_CASE(testTARGET) {
     BOOST_TEST_MESSAGE("Testing TARGET holiday list...");
 
     std::vector<Date> expectedHol;
@@ -428,7 +449,7 @@ void CalendarTest::testTARGET() {
                                  << hol.size() << " calculated holidays");
 }
 
-void CalendarTest::testGermanyFrankfurt() {
+BOOST_AUTO_TEST_CASE(testGermanyFrankfurt) {
     BOOST_TEST_MESSAGE("Testing Frankfurt Stock Exchange holiday list...");
 
     std::vector<Date> expectedHol;
@@ -458,7 +479,7 @@ void CalendarTest::testGermanyFrankfurt() {
                                  << hol.size() << " calculated holidays");
 }
 
-void CalendarTest::testGermanyEurex() {
+BOOST_AUTO_TEST_CASE(testGermanyEurex) {
     BOOST_TEST_MESSAGE("Testing Eurex holiday list...");
 
     std::vector<Date> expectedHol;
@@ -490,7 +511,7 @@ void CalendarTest::testGermanyEurex() {
                                  << hol.size() << " calculated holidays");
 }
 
-void CalendarTest::testGermanyXetra() {
+BOOST_AUTO_TEST_CASE(testGermanyXetra) {
     BOOST_TEST_MESSAGE("Testing Xetra holiday list...");
 
     std::vector<Date> expectedHol;
@@ -520,7 +541,7 @@ void CalendarTest::testGermanyXetra() {
                                  << hol.size() << " calculated holidays");
 }
 
-void CalendarTest::testUKSettlement() {
+BOOST_AUTO_TEST_CASE(testUKSettlement) {
     BOOST_TEST_MESSAGE("Testing UK settlement holiday list...");
 
     std::vector<Date> expectedHol;
@@ -573,7 +594,7 @@ void CalendarTest::testUKSettlement() {
                                  << hol.size() << " calculated holidays");
 }
 
-void CalendarTest::testUKExchange() {
+BOOST_AUTO_TEST_CASE(testUKExchange) {
     BOOST_TEST_MESSAGE("Testing London Stock Exchange holiday list...");
 
     std::vector<Date> expectedHol;
@@ -626,7 +647,7 @@ void CalendarTest::testUKExchange() {
                                  << hol.size() << " calculated holidays");
 }
 
-void CalendarTest::testUKMetals() {
+BOOST_AUTO_TEST_CASE(testUKMetals) {
     BOOST_TEST_MESSAGE("Testing London Metals Exchange holiday list...");
 
     std::vector<Date> expectedHol;
@@ -679,7 +700,7 @@ void CalendarTest::testUKMetals() {
                                  << hol.size() << " calculated holidays");
 }
 
-void CalendarTest::testItalyExchange() {
+BOOST_AUTO_TEST_CASE(testItalyExchange) {
     BOOST_TEST_MESSAGE("Testing Milan Stock Exchange holiday list...");
 
     std::vector<Date> expectedHol;
@@ -722,7 +743,7 @@ void CalendarTest::testItalyExchange() {
                                  << hol.size() << " calculated holidays");
 }
 
-void CalendarTest::testRussia() {
+BOOST_AUTO_TEST_CASE(testRussia) {
     BOOST_TEST_MESSAGE("Testing Russia holiday list...");
 
     std::vector<Date> expectedHol;
@@ -1323,7 +1344,7 @@ void CalendarTest::testRussia() {
                                  << hol.size() << " calculated holidays");
 }
 
-void CalendarTest::testBrazil() {
+BOOST_AUTO_TEST_CASE(testBrazil) {
     BOOST_TEST_MESSAGE("Testing Brazil holiday list...");
 
     std::vector<Date> expectedHol;
@@ -1366,8 +1387,67 @@ void CalendarTest::testBrazil() {
                                  << hol.size() << " calculated holidays");
 }
 
+BOOST_AUTO_TEST_CASE(testDenmark) {
 
-void CalendarTest::testSouthKoreanSettlement() {
+    BOOST_TEST_MESSAGE("Testing Denmark holiday list...");
+
+    std::vector<Date> expectedHol;
+    expectedHol.emplace_back(1, January, 2020);
+    expectedHol.emplace_back(9, April, 2020);
+    expectedHol.emplace_back(10, April, 2020);
+    expectedHol.emplace_back(13, April, 2020);
+    expectedHol.emplace_back(8, May, 2020);
+    expectedHol.emplace_back(21, May, 2020);
+    expectedHol.emplace_back(22, May, 2020);
+    expectedHol.emplace_back(1, June, 2020);
+    expectedHol.emplace_back(5, June, 2020);
+    expectedHol.emplace_back(24, December, 2020);
+    expectedHol.emplace_back(25, December, 2020);
+    // Saturday: expectedHol.emplace_back(26, December, 2020);
+    expectedHol.emplace_back(31, December, 2020);
+
+    expectedHol.emplace_back(1, January, 2021);
+    expectedHol.emplace_back(1, April, 2021);
+    expectedHol.emplace_back(2, April, 2021);
+    expectedHol.emplace_back(5, April, 2021);
+    expectedHol.emplace_back(30, April, 2021);
+    expectedHol.emplace_back(13, May, 2021);
+    expectedHol.emplace_back(14, May, 2021);
+    expectedHol.emplace_back(24, May, 2021);
+    // Saturday: expectedHol.emplace_back(5, June, 2021);
+    expectedHol.emplace_back(24, December, 2021);
+    // Saturday: expectedHol.emplace_back(25, December, 2021);
+    // Sunday: expectedHol.emplace_back(26, December, 2021);
+    expectedHol.emplace_back(31, December, 2021);
+
+    // Saturday: expectedHol.emplace_back(1, January, 2022);
+    expectedHol.emplace_back(14, April, 2022);
+    expectedHol.emplace_back(15, April, 2022);
+    expectedHol.emplace_back(18, April, 2022);
+    expectedHol.emplace_back(13, May, 2022);
+    expectedHol.emplace_back(26, May, 2022);
+    expectedHol.emplace_back(27, May, 2022);
+    // Sunday: expectedHol.emplace_back(5, June, 2022);
+    expectedHol.emplace_back(6, June, 2022);
+    // Saturday: expectedHol.emplace_back(24, December, 2022);
+    // Sunday: expectedHol.emplace_back(25, December, 2022);
+    expectedHol.emplace_back(26, December, 2022);
+    // Saturday: expectedHol.emplace_back(31, December, 2022);
+
+    Calendar c = Denmark();
+    std::vector<Date> hol = c.holidayList(Date(1, January, 2020), Date(31, December, 2022));
+
+    for (Size i = 0; i < std::min<Size>(hol.size(), expectedHol.size()); i++) {
+        if (hol[i] != expectedHol[i])
+            BOOST_FAIL("expected holiday was " << expectedHol[i] << " while calculated holiday is "
+                                               << hol[i]);
+    }
+    if (hol.size() != expectedHol.size())
+        BOOST_FAIL("there were " << expectedHol.size() << " expected holidays, while there are "
+                                 << hol.size() << " calculated holidays");
+}
+
+BOOST_AUTO_TEST_CASE(testSouthKoreanSettlement) {
     BOOST_TEST_MESSAGE("Testing South-Korean settlement holiday list...");
 
     std::vector<Date> expectedHol;
@@ -1441,9 +1521,648 @@ void CalendarTest::testSouthKoreanSettlement() {
     expectedHol.emplace_back(3, October, 2007);
     expectedHol.emplace_back(19, December, 2007); // election
     expectedHol.emplace_back(25, December, 2007);
+    expectedHol.emplace_back(1, January, 2008);
+    expectedHol.emplace_back(6, February, 2008);
+    expectedHol.emplace_back(7, February, 2008);
+    expectedHol.emplace_back(8, February, 2008);
+    expectedHol.emplace_back(9, April, 2008);
+    expectedHol.emplace_back(1, May, 2008);
+    expectedHol.emplace_back(5, May, 2008);
+    expectedHol.emplace_back(12, May, 2008);
+    expectedHol.emplace_back(6, June, 2008);
+    expectedHol.emplace_back(15, August, 2008);
+    expectedHol.emplace_back(15, September, 2008);
+    expectedHol.emplace_back(3, October, 2008);
+    expectedHol.emplace_back(25, December, 2008);
+    expectedHol.emplace_back(1, January, 2009);
+    expectedHol.emplace_back(26, January, 2009);
+    expectedHol.emplace_back(27, January, 2009);
+    expectedHol.emplace_back(1, May, 2009);
+    expectedHol.emplace_back(5, May, 2009);
+    expectedHol.emplace_back(2, October, 2009);
+    expectedHol.emplace_back(25, December, 2009);
+    expectedHol.emplace_back(1, January, 2010);
+    expectedHol.emplace_back(15, February, 2010);
+    expectedHol.emplace_back(1, March, 2010);
+    expectedHol.emplace_back(5, May, 2010);
+    expectedHol.emplace_back(21, May, 2010);
+    expectedHol.emplace_back(2, June, 2010);
+    expectedHol.emplace_back(21, September, 2010);
+    expectedHol.emplace_back(22, September, 2010);
+    expectedHol.emplace_back(23, September, 2010);
+    expectedHol.emplace_back(2, February, 2011);
+    expectedHol.emplace_back(3, February, 2011);
+    expectedHol.emplace_back(4, February, 2011);
+    expectedHol.emplace_back(1, March, 2011);
+    expectedHol.emplace_back(5, May, 2011);
+    expectedHol.emplace_back(10, May, 2011);
+    expectedHol.emplace_back(6, June, 2011);
+    expectedHol.emplace_back(15, August, 2011);
+    expectedHol.emplace_back(12, September, 2011);
+    expectedHol.emplace_back(13, September, 2011);
+    expectedHol.emplace_back(3, October, 2011);
+    expectedHol.emplace_back(23, January, 2012);
+    expectedHol.emplace_back(24, January, 2012);
+    expectedHol.emplace_back(1, March, 2012);
+    expectedHol.emplace_back(11, April, 2012);
+    expectedHol.emplace_back(1, May, 2012);
+    expectedHol.emplace_back(28, May, 2012);
+    expectedHol.emplace_back(6, June, 2012);
+    expectedHol.emplace_back(15, August, 2012);
+    expectedHol.emplace_back(1, October, 2012);
+    expectedHol.emplace_back(3, October, 2012);
+    expectedHol.emplace_back(19, December, 2012);
+    expectedHol.emplace_back(25, December, 2012);
+    expectedHol.emplace_back(1, January, 2013);
+    expectedHol.emplace_back(11, February, 2013);
+    expectedHol.emplace_back(1, March, 2013);
+    expectedHol.emplace_back(1, May, 2013);
+    expectedHol.emplace_back(17, May, 2013);
+    expectedHol.emplace_back(6, June, 2013);
+    expectedHol.emplace_back(15, August, 2013);
+    expectedHol.emplace_back(18, September, 2013);
+    expectedHol.emplace_back(19, September, 2013);
+    expectedHol.emplace_back(20, September, 2013);
+    expectedHol.emplace_back(3, October, 2013);
+    expectedHol.emplace_back(9, October, 2013);
+    expectedHol.emplace_back(25, December, 2013);
+    expectedHol.emplace_back(1, January, 2014);
+    expectedHol.emplace_back(30, January, 2014);
+    expectedHol.emplace_back(31, January, 2014);
+    expectedHol.emplace_back(1, May, 2014);
+    expectedHol.emplace_back(5, May, 2014);
+    expectedHol.emplace_back(6, May, 2014);
+    expectedHol.emplace_back(4, June, 2014);
+    expectedHol.emplace_back(6, June, 2014);
+    expectedHol.emplace_back(15, August, 2014);
+    expectedHol.emplace_back(8, September, 2014);
+    expectedHol.emplace_back(9, September, 2014);
+    expectedHol.emplace_back(10, September, 2014);
+    expectedHol.emplace_back(3, October, 2014);
+    expectedHol.emplace_back(9, October, 2014);
+    expectedHol.emplace_back(25, December, 2014);
+    expectedHol.emplace_back(1, January, 2015);
+    expectedHol.emplace_back(18, February, 2015);
+    expectedHol.emplace_back(19, February, 2015);
+    expectedHol.emplace_back(20, February, 2015);
+    expectedHol.emplace_back(1, May, 2015);
+    expectedHol.emplace_back(5, May, 2015);
+    expectedHol.emplace_back(25, May, 2015);
+    expectedHol.emplace_back(14, August, 2015);
+    expectedHol.emplace_back(28, September, 2015);
+    expectedHol.emplace_back(29, September, 2015);
+    expectedHol.emplace_back(9, October, 2015);
+    expectedHol.emplace_back(25, December, 2015);
+    expectedHol.emplace_back(1, January, 2016);
+    expectedHol.emplace_back(8, February, 2016);
+    expectedHol.emplace_back(9, February, 2016);
+    expectedHol.emplace_back(10, February, 2016);
+    expectedHol.emplace_back(1, March, 2016);
+    expectedHol.emplace_back(13, April, 2016);
+    expectedHol.emplace_back(5, May, 2016);
+    expectedHol.emplace_back(6, June, 2016);
+    expectedHol.emplace_back(15, August, 2016);
+    expectedHol.emplace_back(14, September, 2016);
+    expectedHol.emplace_back(15, September, 2016);
+    expectedHol.emplace_back(16, September, 2016);
+    expectedHol.emplace_back(3, October, 2016);
+    expectedHol.emplace_back(27, January, 2017);
+    expectedHol.emplace_back(30, January, 2017);
+    expectedHol.emplace_back(1, March, 2017);
+    expectedHol.emplace_back(1, May, 2017);
+    expectedHol.emplace_back(3, May, 2017);
+    expectedHol.emplace_back(5, May, 2017);
+    expectedHol.emplace_back(9, May, 2017);
+    expectedHol.emplace_back(6, June, 2017);
+    expectedHol.emplace_back(15, August, 2017);
+    expectedHol.emplace_back(3, October, 2017);
+    expectedHol.emplace_back(4, October, 2017);
+    expectedHol.emplace_back(5, October, 2017);
+    expectedHol.emplace_back(6, October, 2017);
+    expectedHol.emplace_back(9, October, 2017);
+    expectedHol.emplace_back(25, December, 2017);
+    expectedHol.emplace_back(1, January, 2018);
+    expectedHol.emplace_back(15, February, 2018);
+    expectedHol.emplace_back(16, February, 2018);
+    expectedHol.emplace_back(1, March, 2018);
+    expectedHol.emplace_back(1, May, 2018);
+    expectedHol.emplace_back(7, May, 2018);
+    expectedHol.emplace_back(22, May, 2018);
+    expectedHol.emplace_back(6, June, 2018);
+    expectedHol.emplace_back(13, June, 2018);
+    expectedHol.emplace_back(15, August, 2018);
+    expectedHol.emplace_back(24, September, 2018);
+    expectedHol.emplace_back(25, September, 2018);
+    expectedHol.emplace_back(26, September, 2018);
+    expectedHol.emplace_back(3, October, 2018);
+    expectedHol.emplace_back(9, October, 2018);
+    expectedHol.emplace_back(25, December, 2018);
+    expectedHol.emplace_back(1, January, 2019);
+    expectedHol.emplace_back(4, February, 2019);
+    expectedHol.emplace_back(5, February, 2019);
+    expectedHol.emplace_back(6, February, 2019);
+    expectedHol.emplace_back(1, March, 2019);
+    expectedHol.emplace_back(1, May, 2019);
+    expectedHol.emplace_back(6, May, 2019);
+    expectedHol.emplace_back(6, June, 2019);
+    expectedHol.emplace_back(15, August, 2019);
+    expectedHol.emplace_back(12, September, 2019);
+    expectedHol.emplace_back(13, September, 2019);
+    expectedHol.emplace_back(3, October, 2019);
+    expectedHol.emplace_back(9, October, 2019);
+    expectedHol.emplace_back(25, December, 2019);
+    expectedHol.emplace_back(1, January, 2020);
+    expectedHol.emplace_back(24, January, 2020);
+    expectedHol.emplace_back(27, January, 2020);
+    expectedHol.emplace_back(15, April, 2020);
+    expectedHol.emplace_back(30, April, 2020);
+    expectedHol.emplace_back(1, May, 2020);
+    expectedHol.emplace_back(5, May, 2020);
+    expectedHol.emplace_back(17, August, 2020);
+    expectedHol.emplace_back(30, September, 2020);
+    expectedHol.emplace_back(1, October, 2020);
+    expectedHol.emplace_back(2, October, 2020);
+    expectedHol.emplace_back(9, October, 2020);
+    expectedHol.emplace_back(25, December, 2020);
+    expectedHol.emplace_back(1, January, 2021);
+    expectedHol.emplace_back(11, February, 2021);
+    expectedHol.emplace_back(12, February, 2021);
+    expectedHol.emplace_back(1, March, 2021);
+    expectedHol.emplace_back(5, May, 2021);
+    expectedHol.emplace_back(19, May, 2021);
+    expectedHol.emplace_back(16, August, 2021);
+    expectedHol.emplace_back(20, September, 2021);
+    expectedHol.emplace_back(21, September, 2021);
+    expectedHol.emplace_back(22, September, 2021);
+    expectedHol.emplace_back(4, October, 2021);
+    expectedHol.emplace_back(11, October, 2021);
+    expectedHol.emplace_back(31, January, 2022);
+    expectedHol.emplace_back(1, February, 2022);
+    expectedHol.emplace_back(2, February, 2022);
+    expectedHol.emplace_back(1, March, 2022);
+    expectedHol.emplace_back(9, March, 2022);
+    expectedHol.emplace_back(5, May, 2022);
+    expectedHol.emplace_back(1, June, 2022);
+    expectedHol.emplace_back(6, June, 2022);
+    expectedHol.emplace_back(15, August, 2022);
+    expectedHol.emplace_back(9, September, 2022);
+    expectedHol.emplace_back(12, September, 2022);
+    expectedHol.emplace_back(3, October, 2022);
+    expectedHol.emplace_back(10, October, 2022);
+    // expectedHol.emplace_back(1, January, 2023);    // Sunday
+    // expectedHol.emplace_back(21, January, 2023);    // Saturday
+    expectedHol.emplace_back(23, January, 2023);
+    expectedHol.emplace_back(24, January, 2023);
+    expectedHol.emplace_back(1, March, 2023);
+    expectedHol.emplace_back(1, May, 2023);
+    expectedHol.emplace_back(5, May, 2023);
+    expectedHol.emplace_back(29, May, 2023);
+    expectedHol.emplace_back(6, June, 2023);
+    expectedHol.emplace_back(15, August, 2023);
+    expectedHol.emplace_back(28, September, 2023);
+    expectedHol.emplace_back(29, September, 2023);
+    // expectedHol.emplace_back(30, September, 2023);    // Saturday
+    expectedHol.emplace_back(2, October, 2023);
+    expectedHol.emplace_back(3, October, 2023);
+    expectedHol.emplace_back(9, October, 2023);
+    expectedHol.emplace_back(25, December, 2023);
+    expectedHol.emplace_back(1, January, 2024);
+    expectedHol.emplace_back(9, February, 2024);
+    // expectedHol.emplace_back(10, February, 2024);    // Saturday
+    expectedHol.emplace_back(12, February, 2024);
+    expectedHol.emplace_back(1, March, 2024);
+    expectedHol.emplace_back(10, April, 2024);
+    expectedHol.emplace_back(1, May, 2024);
+    expectedHol.emplace_back(6, May, 2024);
+    expectedHol.emplace_back(15, May, 2024);
+    expectedHol.emplace_back(6, June, 2024);
+    expectedHol.emplace_back(15, August, 2024);
+    expectedHol.emplace_back(16, September, 2024);
+    expectedHol.emplace_back(17, September, 2024);
+    expectedHol.emplace_back(18, September, 2024);
+    expectedHol.emplace_back(3, October, 2024);
+    expectedHol.emplace_back(9, October, 2024);
+    expectedHol.emplace_back(25, December, 2024);
+    expectedHol.emplace_back(1, January, 2025);
+    expectedHol.emplace_back(28, January, 2025);
+    expectedHol.emplace_back(29, January, 2025);
+    expectedHol.emplace_back(30, January, 2025);
+    expectedHol.emplace_back(3, March, 2025);
+    expectedHol.emplace_back(1, May, 2025);
+    expectedHol.emplace_back(5, May, 2025);
+    expectedHol.emplace_back(6, May, 2025);
+    expectedHol.emplace_back(6, June, 2025);
+    expectedHol.emplace_back(15, August, 2025);
+    expectedHol.emplace_back(3, October, 2025);
+    expectedHol.emplace_back(6, October, 2025);
+    expectedHol.emplace_back(7, October, 2025);
+    expectedHol.emplace_back(8, October, 2025);
+    expectedHol.emplace_back(9, October, 2025);
+    expectedHol.emplace_back(25, December, 2025);
+    expectedHol.emplace_back(1, January, 2026);
+    expectedHol.emplace_back(16, February, 2026);
+    expectedHol.emplace_back(17, February, 2026);
+    expectedHol.emplace_back(18, February, 2026);
+    expectedHol.emplace_back(2, March, 2026);
+    expectedHol.emplace_back(1, May, 2026);
+    expectedHol.emplace_back(5, May, 2026);
+    expectedHol.emplace_back(25, May, 2026);
+    // expectedHol.emplace_back(6, June, 2026);    // Saturday
+    expectedHol.emplace_back(17, August, 2026);
+    expectedHol.emplace_back(24, September, 2026);
+    expectedHol.emplace_back(25, September, 2026);
+    // expectedHol.emplace_back(26, September, 2026);    // Saturday
+    expectedHol.emplace_back(5, October, 2026);
+    expectedHol.emplace_back(9, October, 2026);
+    expectedHol.emplace_back(25, December, 2026);
+    expectedHol.emplace_back(1, January, 2027);
+    // expectedHol.emplace_back(6, February, 2027);    // Saturday
+    expectedHol.emplace_back(8, February, 2027);
+    expectedHol.emplace_back(9, February, 2027);
+    expectedHol.emplace_back(1, March, 2027);
+    // expectedHol.emplace_back(1, May, 2027);    // Saturday
+    expectedHol.emplace_back(5, May, 2027);
+    expectedHol.emplace_back(13, May, 2027);
+    // expectedHol.emplace_back(6, June, 2027);    // Sunday
+    expectedHol.emplace_back(16, August, 2027);
+    expectedHol.emplace_back(14, September, 2027);
+    expectedHol.emplace_back(15, September, 2027);
+    expectedHol.emplace_back(16, September, 2027);
+    expectedHol.emplace_back(4, October, 2027);
+    expectedHol.emplace_back(11, October, 2027);
+    expectedHol.emplace_back(27, December, 2027);
+    // expectedHol.emplace_back(1, January, 2028);    // Saturday
+    expectedHol.emplace_back(26, January, 2028);
+    expectedHol.emplace_back(27, January, 2028);
+    expectedHol.emplace_back(28, January, 2028);
+    expectedHol.emplace_back(1, March, 2028);
+    expectedHol.emplace_back(1, May, 2028);
+    expectedHol.emplace_back(2, May, 2028);
+    expectedHol.emplace_back(5, May, 2028);
+    expectedHol.emplace_back(6, June, 2028);
+    expectedHol.emplace_back(15, August, 2028);
+    expectedHol.emplace_back(2, October, 2028);
+    expectedHol.emplace_back(3, October, 2028);
+    expectedHol.emplace_back(4, October, 2028);
+    expectedHol.emplace_back(5, October, 2028);
+    expectedHol.emplace_back(9, October, 2028);
+    expectedHol.emplace_back(25, December, 2028);
+    expectedHol.emplace_back(1, January, 2029);
+    expectedHol.emplace_back(12, February, 2029);
+    expectedHol.emplace_back(13, February, 2029);
+    expectedHol.emplace_back(14, February, 2029);
+    expectedHol.emplace_back(1, March, 2029);
+    expectedHol.emplace_back(1, May, 2029);
+    expectedHol.emplace_back(7, May, 2029);
+    expectedHol.emplace_back(21, May, 2029);
+    expectedHol.emplace_back(6, June, 2029);
+    expectedHol.emplace_back(15, August, 2029);
+    expectedHol.emplace_back(21, September, 2029);
+    // expectedHol.emplace_back(22, September, 2029);    // Saturday
+    expectedHol.emplace_back(24, September, 2029);
+    expectedHol.emplace_back(3, October, 2029);
+    expectedHol.emplace_back(9, October, 2029);
+    expectedHol.emplace_back(25, December, 2029);
+    expectedHol.emplace_back(1, January, 2030);
+    // expectedHol.emplace_back(2, February, 2030);    // Saturday
+    expectedHol.emplace_back(4, February, 2030);
+    expectedHol.emplace_back(5, February, 2030);
+    expectedHol.emplace_back(1, March, 2030);
+    expectedHol.emplace_back(1, May, 2030);
+    expectedHol.emplace_back(6, May, 2030);
+    expectedHol.emplace_back(9, May, 2030);
+    expectedHol.emplace_back(6, June, 2030);
+    expectedHol.emplace_back(15, August, 2030);
+    expectedHol.emplace_back(11, September, 2030);
+    expectedHol.emplace_back(12, September, 2030);
+    expectedHol.emplace_back(13, September, 2030);
+    expectedHol.emplace_back(3, October, 2030);
+    expectedHol.emplace_back(9, October, 2030);
+    expectedHol.emplace_back(25, December, 2030);
+    expectedHol.emplace_back(1, January, 2031);
+    expectedHol.emplace_back(22, January, 2031);
+    expectedHol.emplace_back(23, January, 2031);
+    expectedHol.emplace_back(24, January, 2031);
+    expectedHol.emplace_back(3, March, 2031);
+    expectedHol.emplace_back(1, May, 2031);
+    expectedHol.emplace_back(5, May, 2031);
+    expectedHol.emplace_back(28, May, 2031);
+    expectedHol.emplace_back(6, June, 2031);
+    expectedHol.emplace_back(15, August, 2031);
+    expectedHol.emplace_back(30, September, 2031);
+    expectedHol.emplace_back(1, October, 2031);
+    expectedHol.emplace_back(2, October, 2031);
+    expectedHol.emplace_back(3, October, 2031);
+    expectedHol.emplace_back(9, October, 2031);
+    expectedHol.emplace_back(25, December, 2031);
+    expectedHol.emplace_back(1, January, 2032);
+    expectedHol.emplace_back(10, February, 2032);
+    expectedHol.emplace_back(11, February, 2032);
+    expectedHol.emplace_back(12, February, 2032);
+    expectedHol.emplace_back(1, March, 2032);
+    // expectedHol.emplace_back(1, May, 2032);    // Saturday
+    expectedHol.emplace_back(5, May, 2032);
+    expectedHol.emplace_back(17, May, 2032);
+    // expectedHol.emplace_back(6, June, 2032);    // Sunday
+    expectedHol.emplace_back(16, August, 2032);
+    // expectedHol.emplace_back(18, September, 2032);    // Saturday
+    expectedHol.emplace_back(20, September, 2032);
+    expectedHol.emplace_back(21, September, 2032);
+    expectedHol.emplace_back(4, October, 2032);
+    expectedHol.emplace_back(11, October, 2032);
+    expectedHol.emplace_back(27, December, 2032);
+    // expectedHol.emplace_back(1, January, 2033);    // Saturday
+    expectedHol.emplace_back(31, January, 2033);
+    expectedHol.emplace_back(1, February, 2033);
+    expectedHol.emplace_back(2, February, 2033);
+    expectedHol.emplace_back(1, March, 2033);
+    // expectedHol.emplace_back(1, May, 2033);    // Sunday
+    expectedHol.emplace_back(5, May, 2033);
+    expectedHol.emplace_back(6, May, 2033);
+    expectedHol.emplace_back(6, June, 2033);
+    expectedHol.emplace_back(15, August, 2033);
+    expectedHol.emplace_back(7, September, 2033);
+    expectedHol.emplace_back(8, September, 2033);
+    expectedHol.emplace_back(9, September, 2033);
+    expectedHol.emplace_back(3, October, 2033);
+    expectedHol.emplace_back(10, October, 2033);
+    expectedHol.emplace_back(26, December, 2033);
+    // expectedHol.emplace_back(1, January, 2034);    // Sunday
+    // expectedHol.emplace_back(18, February, 2034);    // Saturday
+    expectedHol.emplace_back(20, February, 2034);
+    expectedHol.emplace_back(21, February, 2034);
+    expectedHol.emplace_back(1, March, 2034);
+    expectedHol.emplace_back(1, May, 2034);
+    expectedHol.emplace_back(5, May, 2034);
+    expectedHol.emplace_back(25, May, 2034);
+    expectedHol.emplace_back(6, June, 2034);
+    expectedHol.emplace_back(15, August, 2034);
+    expectedHol.emplace_back(26, September, 2034);
+    expectedHol.emplace_back(27, September, 2034);
+    expectedHol.emplace_back(28, September, 2034);
+    expectedHol.emplace_back(3, October, 2034);
+    expectedHol.emplace_back(9, October, 2034);
+    expectedHol.emplace_back(25, December, 2034);
+    expectedHol.emplace_back(1, January, 2035);
+    expectedHol.emplace_back(7, February, 2035);
+    expectedHol.emplace_back(8, February, 2035);
+    expectedHol.emplace_back(9, February, 2035);
+    expectedHol.emplace_back(1, March, 2035);
+    expectedHol.emplace_back(1, May, 2035);
+    expectedHol.emplace_back(7, May, 2035);
+    expectedHol.emplace_back(15, May, 2035);
+    expectedHol.emplace_back(6, June, 2035);
+    expectedHol.emplace_back(15, August, 2035);
+    // expectedHol.emplace_back(15, September, 2035);    // Saturday
+    expectedHol.emplace_back(17, September, 2035);
+    expectedHol.emplace_back(18, September, 2035);
+    expectedHol.emplace_back(3, October, 2035);
+    expectedHol.emplace_back(9, October, 2035);
+    expectedHol.emplace_back(25, December, 2035);
+    expectedHol.emplace_back(1, January, 2036);
+    expectedHol.emplace_back(28, January, 2036);
+    expectedHol.emplace_back(29, January, 2036);
+    expectedHol.emplace_back(30, January, 2036);
+    expectedHol.emplace_back(3, March, 2036);
+    expectedHol.emplace_back(1, May, 2036);
+    expectedHol.emplace_back(5, May, 2036);
+    expectedHol.emplace_back(6, May, 2036);
+    expectedHol.emplace_back(6, June, 2036);
+    expectedHol.emplace_back(15, August, 2036);
+    expectedHol.emplace_back(3, October, 2036);
+    // expectedHol.emplace_back(4, October, 2036);    // Saturday
+    expectedHol.emplace_back(6, October, 2036);
+    expectedHol.emplace_back(7, October, 2036);
+    expectedHol.emplace_back(9, October, 2036);
+    expectedHol.emplace_back(25, December, 2036);
+    expectedHol.emplace_back(1, January, 2037);
+    // expectedHol.emplace_back(14, February, 2037);    // Saturday
+    expectedHol.emplace_back(16, February, 2037);
+    expectedHol.emplace_back(17, February, 2037);
+    expectedHol.emplace_back(2, March, 2037);
+    expectedHol.emplace_back(1, May, 2037);
+    expectedHol.emplace_back(5, May, 2037);
+    expectedHol.emplace_back(22, May, 2037);
+    // expectedHol.emplace_back(6, June, 2037);    // Saturday
+    expectedHol.emplace_back(17, August, 2037);
+    expectedHol.emplace_back(23, September, 2037);
+    expectedHol.emplace_back(24, September, 2037);
+    expectedHol.emplace_back(25, September, 2037);
+    expectedHol.emplace_back(5, October, 2037);
+    expectedHol.emplace_back(9, October, 2037);
+    expectedHol.emplace_back(25, December, 2037);
+    expectedHol.emplace_back(1, January, 2038);
+    expectedHol.emplace_back(3, February, 2038);
+    expectedHol.emplace_back(4, February, 2038);
+    expectedHol.emplace_back(5, February, 2038);
+    expectedHol.emplace_back(1, March, 2038);
+    // expectedHol.emplace_back(1, May, 2038);    // Saturday
+    expectedHol.emplace_back(5, May, 2038);
+    expectedHol.emplace_back(11, May, 2038);
+    // expectedHol.emplace_back(6, June, 2038);    // Sunday
+    expectedHol.emplace_back(16, August, 2038);
+    expectedHol.emplace_back(13, September, 2038);
+    expectedHol.emplace_back(14, September, 2038);
+    expectedHol.emplace_back(15, September, 2038);
+    expectedHol.emplace_back(4, October, 2038);
+    expectedHol.emplace_back(11, October, 2038);
+    expectedHol.emplace_back(27, December, 2038);
+    // expectedHol.emplace_back(1, January, 2039);    // Saturday
+    expectedHol.emplace_back(24, January, 2039);
+    expectedHol.emplace_back(25, January, 2039);
+    expectedHol.emplace_back(26, January, 2039);
+    expectedHol.emplace_back(1, March, 2039);
+    // expectedHol.emplace_back(1, May, 2039);    // Sunday
+    expectedHol.emplace_back(2, May, 2039);
+    expectedHol.emplace_back(5, May, 2039);
+    expectedHol.emplace_back(6, June, 2039);
+    expectedHol.emplace_back(15, August, 2039);
+    // expectedHol.emplace_back(1, October, 2039);    // Saturday
+    expectedHol.emplace_back(3, October, 2039);
+    expectedHol.emplace_back(4, October, 2039);
+    expectedHol.emplace_back(5, October, 2039);
+    expectedHol.emplace_back(10, October, 2039);
+    expectedHol.emplace_back(26, December, 2039);
+    // expectedHol.emplace_back(1, January, 2040);    // Sunday
+    // expectedHol.emplace_back(11, February, 2040);    // Saturday
+    expectedHol.emplace_back(13, February, 2040);
+    expectedHol.emplace_back(14, February, 2040);
+    expectedHol.emplace_back(1, March, 2040);
+    expectedHol.emplace_back(1, May, 2040);
+    expectedHol.emplace_back(7, May, 2040);
+    expectedHol.emplace_back(18, May, 2040);
+    expectedHol.emplace_back(6, June, 2040);
+    expectedHol.emplace_back(15, August, 2040);
+    expectedHol.emplace_back(20, September, 2040);
+    expectedHol.emplace_back(21, September, 2040);
+    // expectedHol.emplace_back(22, September, 2040);    // Saturday
+    expectedHol.emplace_back(3, October, 2040);
+    expectedHol.emplace_back(9, October, 2040);
+    expectedHol.emplace_back(25, December, 2040);
+    expectedHol.emplace_back(1, January, 2041);
+    expectedHol.emplace_back(31, January, 2041);
+    expectedHol.emplace_back(1, February, 2041);
+    // expectedHol.emplace_back(2, February, 2041);    // Saturday
+    expectedHol.emplace_back(1, March, 2041);
+    expectedHol.emplace_back(1, May, 2041);
+    expectedHol.emplace_back(6, May, 2041);
+    expectedHol.emplace_back(7, May, 2041);
+    expectedHol.emplace_back(6, June, 2041);
+    expectedHol.emplace_back(15, August, 2041);
+    expectedHol.emplace_back(9, September, 2041);
+    expectedHol.emplace_back(10, September, 2041);
+    expectedHol.emplace_back(11, September, 2041);
+    expectedHol.emplace_back(3, October, 2041);
+    expectedHol.emplace_back(9, October, 2041);
+    expectedHol.emplace_back(25, December, 2041);
+    expectedHol.emplace_back(1, January, 2042);
+    expectedHol.emplace_back(21, January, 2042);
+    expectedHol.emplace_back(22, January, 2042);
+    expectedHol.emplace_back(23, January, 2042);
+    expectedHol.emplace_back(3, March, 2042);
+    expectedHol.emplace_back(1, May, 2042);
+    expectedHol.emplace_back(5, May, 2042);
+    expectedHol.emplace_back(26, May, 2042);
+    expectedHol.emplace_back(6, June, 2042);
+    expectedHol.emplace_back(15, August, 2042);
+    // expectedHol.emplace_back(27, September, 2042);    // Saturday
+    expectedHol.emplace_back(29, September, 2042);
+    expectedHol.emplace_back(30, September, 2042);
+    expectedHol.emplace_back(3, October, 2042);
+    expectedHol.emplace_back(9, October, 2042);
+    expectedHol.emplace_back(25, December, 2042);
+    expectedHol.emplace_back(1, January, 2043);
+    expectedHol.emplace_back(9, February, 2043);
+    expectedHol.emplace_back(10, February, 2043);
+    expectedHol.emplace_back(11, February, 2043);
+    expectedHol.emplace_back(2, March, 2043);
+    expectedHol.emplace_back(1, May, 2043);
+    expectedHol.emplace_back(5, May, 2043);
+    expectedHol.emplace_back(18, May, 2043);
+    // expectedHol.emplace_back(6, June, 2043);    // Saturday
+    expectedHol.emplace_back(17, August, 2043);
+    expectedHol.emplace_back(16, September, 2043);
+    expectedHol.emplace_back(17, September, 2043);
+    expectedHol.emplace_back(18, September, 2043);
+    expectedHol.emplace_back(5, October, 2043);
+    expectedHol.emplace_back(9, October, 2043);
+    expectedHol.emplace_back(25, December, 2043);
+    expectedHol.emplace_back(1, January, 2044);
+    expectedHol.emplace_back(29, January, 2044);
+    // expectedHol.emplace_back(30, January, 2044);    // Saturday
+    expectedHol.emplace_back(1, February, 2044);
+    expectedHol.emplace_back(1, March, 2044);
+    // expectedHol.emplace_back(1, May, 2044);    // Sunday
+    expectedHol.emplace_back(5, May, 2044);
+    expectedHol.emplace_back(6, May, 2044);
+    expectedHol.emplace_back(6, June, 2044);
+    expectedHol.emplace_back(15, August, 2044);
+    expectedHol.emplace_back(3, October, 2044);
+    expectedHol.emplace_back(4, October, 2044);
+    expectedHol.emplace_back(5, October, 2044);
+    expectedHol.emplace_back(6, October, 2044);
+    expectedHol.emplace_back(10, October, 2044);
+    expectedHol.emplace_back(26, December, 2044);
+    // expectedHol.emplace_back(1, January, 2045);    // Sunday
+    expectedHol.emplace_back(16, February, 2045);
+    expectedHol.emplace_back(17, February, 2045);
+    // expectedHol.emplace_back(18, February, 2045);    // Saturday
+    expectedHol.emplace_back(1, March, 2045);
+    expectedHol.emplace_back(1, May, 2045);
+    expectedHol.emplace_back(5, May, 2045);
+    expectedHol.emplace_back(24, May, 2045);
+    expectedHol.emplace_back(6, June, 2045);
+    expectedHol.emplace_back(15, August, 2045);
+    expectedHol.emplace_back(25, September, 2045);
+    expectedHol.emplace_back(26, September, 2045);
+    expectedHol.emplace_back(27, September, 2045);
+    expectedHol.emplace_back(3, October, 2045);
+    expectedHol.emplace_back(9, October, 2045);
+    expectedHol.emplace_back(25, December, 2045);
+    expectedHol.emplace_back(1, January, 2046);
+    expectedHol.emplace_back(5, February, 2046);
+    expectedHol.emplace_back(6, February, 2046);
+    expectedHol.emplace_back(7, February, 2046);
+    expectedHol.emplace_back(1, March, 2046);
+    expectedHol.emplace_back(1, May, 2046);
+    expectedHol.emplace_back(7, May, 2046);
+    expectedHol.emplace_back(14, May, 2046);
+    expectedHol.emplace_back(6, June, 2046);
+    expectedHol.emplace_back(15, August, 2046);
+    expectedHol.emplace_back(14, September, 2046);
+    // expectedHol.emplace_back(15, September, 2046);    // Saturday
+    expectedHol.emplace_back(17, September, 2046);
+    expectedHol.emplace_back(3, October, 2046);
+    expectedHol.emplace_back(9, October, 2046);
+    expectedHol.emplace_back(25, December, 2046);
+    expectedHol.emplace_back(1, January, 2047);
+    expectedHol.emplace_back(25, January, 2047);
+    // expectedHol.emplace_back(26, January, 2047);    // Saturday
+    expectedHol.emplace_back(28, January, 2047);
+    expectedHol.emplace_back(1, March, 2047);
+    expectedHol.emplace_back(1, May, 2047);
+    expectedHol.emplace_back(2, May, 2047);
+    expectedHol.emplace_back(6, May, 2047);
+    expectedHol.emplace_back(6, June, 2047);
+    expectedHol.emplace_back(15, August, 2047);
+    expectedHol.emplace_back(3, October, 2047);
+    expectedHol.emplace_back(4, October, 2047);
+    // expectedHol.emplace_back(5, October, 2047);    // Saturday
+    expectedHol.emplace_back(7, October, 2047);
+    expectedHol.emplace_back(9, October, 2047);
+    expectedHol.emplace_back(25, December, 2047);
+    expectedHol.emplace_back(1, January, 2048);
+    expectedHol.emplace_back(13, February, 2048);
+    expectedHol.emplace_back(14, February, 2048);
+    // expectedHol.emplace_back(15, February, 2048);    // Saturday
+    expectedHol.emplace_back(2, March, 2048);
+    expectedHol.emplace_back(1, May, 2048);
+    expectedHol.emplace_back(5, May, 2048);
+    expectedHol.emplace_back(20, May, 2048);
+    // expectedHol.emplace_back(6, June, 2048);    // Saturday
+    expectedHol.emplace_back(17, August, 2048);
+    expectedHol.emplace_back(21, September, 2048);
+    expectedHol.emplace_back(22, September, 2048);
+    expectedHol.emplace_back(23, September, 2048);
+    expectedHol.emplace_back(5, October, 2048);
+    expectedHol.emplace_back(9, October, 2048);
+    expectedHol.emplace_back(25, December, 2048);
+    expectedHol.emplace_back(1, January, 2049);
+    expectedHol.emplace_back(1, February, 2049);
+    expectedHol.emplace_back(2, February, 2049);
+    expectedHol.emplace_back(3, February, 2049);
+    expectedHol.emplace_back(1, March, 2049);
+    // expectedHol.emplace_back(1, May, 2049);    // Saturday
+    expectedHol.emplace_back(5, May, 2049);
+    expectedHol.emplace_back(10, May, 2049);
+    // expectedHol.emplace_back(6, June, 2049);    // Sunday
+    expectedHol.emplace_back(16, August, 2049);
+    expectedHol.emplace_back(10, September, 2049);
+    // expectedHol.emplace_back(11, September, 2049);    // Saturday
+    expectedHol.emplace_back(13, September, 2049);
+    expectedHol.emplace_back(4, October, 2049);
+    expectedHol.emplace_back(11, October, 2049);
+    expectedHol.emplace_back(27, December, 2049);
+    // expectedHol.emplace_back(1, January, 2050);    // Saturday
+    // expectedHol.emplace_back(22, January, 2050);    // Saturday
+    expectedHol.emplace_back(24, January, 2050);
+    expectedHol.emplace_back(25, January, 2050);
+    expectedHol.emplace_back(1, March, 2050);
+    // expectedHol.emplace_back(1, May, 2050);    // Sunday
+    expectedHol.emplace_back(5, May, 2050);
+    expectedHol.emplace_back(30, May, 2050);
+    expectedHol.emplace_back(6, June, 2050);
+    expectedHol.emplace_back(15, August, 2050);
+    expectedHol.emplace_back(29, September, 2050);
+    expectedHol.emplace_back(30, September, 2050);
+    // expectedHol.emplace_back(1, October, 2050);    // Saturday
+    expectedHol.emplace_back(3, October, 2050);
+    expectedHol.emplace_back(10, October, 2050);
+    expectedHol.emplace_back(26, December, 2050);
 
     Calendar c = SouthKorea(SouthKorea::Settlement);
-    std::vector<Date> hol = c.holidayList(Date(1, January, 2004), Date(31, December, 2007));
+    std::vector<Date> hol = c.holidayList(Date(1, January, 2004), Date(31, December, 2050));
+
     for (Size i = 0; i < std::min<Size>(hol.size(), expectedHol.size()); i++) {
         if (hol[i] != expectedHol[i])
             BOOST_FAIL("expected holiday was " << expectedHol[i] << " while calculated holiday is "
@@ -1454,7 +2173,7 @@ void CalendarTest::testSouthKoreanSettlement() {
                                  << hol.size() << " calculated holidays");
 }
 
-void CalendarTest::testKoreaStockExchange() {
+BOOST_AUTO_TEST_CASE(testKoreaStockExchange) {
     BOOST_TEST_MESSAGE("Testing Korea Stock Exchange holiday list...");
 
     std::vector<Date> expectedHol;
@@ -1532,9 +2251,692 @@ void CalendarTest::testKoreaStockExchange() {
     expectedHol.emplace_back(19, December, 2007); // election
     expectedHol.emplace_back(25, December, 2007);
     expectedHol.emplace_back(31, December, 2007);
+    expectedHol.emplace_back(1, January, 2008);
+    expectedHol.emplace_back(6, February, 2008);
+    expectedHol.emplace_back(7, February, 2008);
+    expectedHol.emplace_back(8, February, 2008);
+    expectedHol.emplace_back(9, April, 2008);
+    expectedHol.emplace_back(1, May, 2008);
+    expectedHol.emplace_back(5, May, 2008);
+    expectedHol.emplace_back(12, May, 2008);
+    expectedHol.emplace_back(6, June, 2008);
+    expectedHol.emplace_back(15, August, 2008);
+    expectedHol.emplace_back(15, September, 2008);
+    expectedHol.emplace_back(3, October, 2008);
+    expectedHol.emplace_back(25, December, 2008);
+    expectedHol.emplace_back(31, December, 2008);
+    expectedHol.emplace_back(1, January, 2009);
+    expectedHol.emplace_back(26, January, 2009);
+    expectedHol.emplace_back(27, January, 2009);
+    expectedHol.emplace_back(1, May, 2009);
+    expectedHol.emplace_back(5, May, 2009);
+    expectedHol.emplace_back(2, October, 2009);
+    expectedHol.emplace_back(25, December, 2009);
+    expectedHol.emplace_back(31, December, 2009);
+    expectedHol.emplace_back(1, January, 2010);
+    expectedHol.emplace_back(15, February, 2010);
+    expectedHol.emplace_back(1, March, 2010);
+    expectedHol.emplace_back(5, May, 2010);
+    expectedHol.emplace_back(21, May, 2010);
+    expectedHol.emplace_back(2, June, 2010);
+    expectedHol.emplace_back(21, September, 2010);
+    expectedHol.emplace_back(22, September, 2010);
+    expectedHol.emplace_back(23, September, 2010);
+    expectedHol.emplace_back(31, December, 2010);
+    expectedHol.emplace_back(2, February, 2011);
+    expectedHol.emplace_back(3, February, 2011);
+    expectedHol.emplace_back(4, February, 2011);
+    expectedHol.emplace_back(1, March, 2011);
+    expectedHol.emplace_back(5, May, 2011);
+    expectedHol.emplace_back(10, May, 2011);
+    expectedHol.emplace_back(6, June, 2011);
+    expectedHol.emplace_back(15, August, 2011);
+    expectedHol.emplace_back(12, September, 2011);
+    expectedHol.emplace_back(13, September, 2011);
+    expectedHol.emplace_back(3, October, 2011);
+    expectedHol.emplace_back(30, December, 2011);
+    expectedHol.emplace_back(23, January, 2012);
+    expectedHol.emplace_back(24, January, 2012);
+    expectedHol.emplace_back(1, March, 2012);
+    expectedHol.emplace_back(11, April, 2012);
+    expectedHol.emplace_back(1, May, 2012);
+    expectedHol.emplace_back(28, May, 2012);
+    expectedHol.emplace_back(6, June, 2012);
+    expectedHol.emplace_back(15, August, 2012);
+    expectedHol.emplace_back(1, October, 2012);
+    expectedHol.emplace_back(3, October, 2012);
+    expectedHol.emplace_back(19, December, 2012);
+    expectedHol.emplace_back(25, December, 2012);
+    expectedHol.emplace_back(31, December, 2012);
+    expectedHol.emplace_back(1, January, 2013);
+    expectedHol.emplace_back(11, February, 2013);
+    expectedHol.emplace_back(1, March, 2013);
+    expectedHol.emplace_back(1, May, 2013);
+    expectedHol.emplace_back(17, May, 2013);
+    expectedHol.emplace_back(6, June, 2013);
+    expectedHol.emplace_back(15, August, 2013);
+    expectedHol.emplace_back(18, September, 2013);
+    expectedHol.emplace_back(19, September, 2013);
+    expectedHol.emplace_back(20, September, 2013);
+    expectedHol.emplace_back(3, October, 2013);
+    expectedHol.emplace_back(9, October, 2013);
+    expectedHol.emplace_back(25, December, 2013);
+    expectedHol.emplace_back(31, December, 2013);
+    expectedHol.emplace_back(1, January, 2014);
+    expectedHol.emplace_back(30, January, 2014);
+    expectedHol.emplace_back(31, January, 2014);
+    expectedHol.emplace_back(1, May, 2014);
+    expectedHol.emplace_back(5, May, 2014);
+    expectedHol.emplace_back(6, May, 2014);
+    expectedHol.emplace_back(4, June, 2014);
+    expectedHol.emplace_back(6, June, 2014);
+    expectedHol.emplace_back(15, August, 2014);
+    expectedHol.emplace_back(8, September, 2014);
+    expectedHol.emplace_back(9, September, 2014);
+    expectedHol.emplace_back(10, September, 2014);
+    expectedHol.emplace_back(3, October, 2014);
+    expectedHol.emplace_back(9, October, 2014);
+    expectedHol.emplace_back(25, December, 2014);
+    expectedHol.emplace_back(31, December, 2014);
+    expectedHol.emplace_back(1, January, 2015);
+    expectedHol.emplace_back(18, February, 2015);
+    expectedHol.emplace_back(19, February, 2015);
+    expectedHol.emplace_back(20, February, 2015);
+    expectedHol.emplace_back(1, May, 2015);
+    expectedHol.emplace_back(5, May, 2015);
+    expectedHol.emplace_back(25, May, 2015);
+    expectedHol.emplace_back(14, August, 2015);
+    expectedHol.emplace_back(28, September, 2015);
+    expectedHol.emplace_back(29, September, 2015);
+    expectedHol.emplace_back(9, October, 2015);
+    expectedHol.emplace_back(25, December, 2015);
+    expectedHol.emplace_back(31, December, 2015);
+    expectedHol.emplace_back(1, January, 2016);
+    expectedHol.emplace_back(8, February, 2016);
+    expectedHol.emplace_back(9, February, 2016);
+    expectedHol.emplace_back(10, February, 2016);
+    expectedHol.emplace_back(1, March, 2016);
+    expectedHol.emplace_back(13, April, 2016);
+    expectedHol.emplace_back(5, May, 2016);
+    expectedHol.emplace_back(6, May, 2016);
+    expectedHol.emplace_back(6, June, 2016);
+    expectedHol.emplace_back(15, August, 2016);
+    expectedHol.emplace_back(14, September, 2016);
+    expectedHol.emplace_back(15, September, 2016);
+    expectedHol.emplace_back(16, September, 2016);
+    expectedHol.emplace_back(3, October, 2016);
+    expectedHol.emplace_back(30, December, 2016);
+    expectedHol.emplace_back(27, January, 2017);
+    expectedHol.emplace_back(30, January, 2017);
+    expectedHol.emplace_back(1, March, 2017);
+    expectedHol.emplace_back(1, May, 2017);
+    expectedHol.emplace_back(3, May, 2017);
+    expectedHol.emplace_back(5, May, 2017);
+    expectedHol.emplace_back(9, May, 2017);
+    expectedHol.emplace_back(6, June, 2017);
+    expectedHol.emplace_back(15, August, 2017);
+    expectedHol.emplace_back(2, October, 2017);
+    expectedHol.emplace_back(3, October, 2017);
+    expectedHol.emplace_back(4, October, 2017);
+    expectedHol.emplace_back(5, October, 2017);
+    expectedHol.emplace_back(6, October, 2017);
+    expectedHol.emplace_back(9, October, 2017);
+    expectedHol.emplace_back(25, December, 2017);
+    expectedHol.emplace_back(29, December, 2017);
+    expectedHol.emplace_back(1, January, 2018);
+    expectedHol.emplace_back(15, February, 2018);
+    expectedHol.emplace_back(16, February, 2018);
+    expectedHol.emplace_back(1, March, 2018);
+    expectedHol.emplace_back(1, May, 2018);
+    expectedHol.emplace_back(7, May, 2018);
+    expectedHol.emplace_back(22, May, 2018);
+    expectedHol.emplace_back(6, June, 2018);
+    expectedHol.emplace_back(13, June, 2018);
+    expectedHol.emplace_back(15, August, 2018);
+    expectedHol.emplace_back(24, September, 2018);
+    expectedHol.emplace_back(25, September, 2018);
+    expectedHol.emplace_back(26, September, 2018);
+    expectedHol.emplace_back(3, October, 2018);
+    expectedHol.emplace_back(9, October, 2018);
+    expectedHol.emplace_back(25, December, 2018);
+    expectedHol.emplace_back(31, December, 2018);
+    expectedHol.emplace_back(1, January, 2019);
+    expectedHol.emplace_back(4, February, 2019);
+    expectedHol.emplace_back(5, February, 2019);
+    expectedHol.emplace_back(6, February, 2019);
+    expectedHol.emplace_back(1, March, 2019);
+    expectedHol.emplace_back(1, May, 2019);
+    expectedHol.emplace_back(6, May, 2019);
+    expectedHol.emplace_back(6, June, 2019);
+    expectedHol.emplace_back(15, August, 2019);
+    expectedHol.emplace_back(12, September, 2019);
+    expectedHol.emplace_back(13, September, 2019);
+    expectedHol.emplace_back(3, October, 2019);
+    expectedHol.emplace_back(9, October, 2019);
+    expectedHol.emplace_back(25, December, 2019);
+    expectedHol.emplace_back(31, December, 2019);
+    expectedHol.emplace_back(1, January, 2020);
+    expectedHol.emplace_back(24, January, 2020);
+    expectedHol.emplace_back(27, January, 2020);
+    expectedHol.emplace_back(15, April, 2020);
+    expectedHol.emplace_back(30, April, 2020);
+    expectedHol.emplace_back(1, May, 2020);
+    expectedHol.emplace_back(5, May, 2020);
+    expectedHol.emplace_back(17, August, 2020);
+    expectedHol.emplace_back(30, September, 2020);
+    expectedHol.emplace_back(1, October, 2020);
+    expectedHol.emplace_back(2, October, 2020);
+    expectedHol.emplace_back(9, October, 2020);
+    expectedHol.emplace_back(25, December, 2020);
+    expectedHol.emplace_back(31, December, 2020);
+    expectedHol.emplace_back(1, January, 2021);
+    expectedHol.emplace_back(11, February, 2021);
+    expectedHol.emplace_back(12, February, 2021);
+    expectedHol.emplace_back(1, March, 2021);
+    expectedHol.emplace_back(5, May, 2021);
+    expectedHol.emplace_back(19, May, 2021);
+    expectedHol.emplace_back(16, August, 2021);
+    expectedHol.emplace_back(20, September, 2021);
+    expectedHol.emplace_back(21, September, 2021);
+    expectedHol.emplace_back(22, September, 2021);
+    expectedHol.emplace_back( 4, October, 2021);
+    expectedHol.emplace_back(11, October, 2021);
+    expectedHol.emplace_back(31, December, 2021);
+    expectedHol.emplace_back(31, January, 2022);
+    expectedHol.emplace_back(1, February, 2022);
+    expectedHol.emplace_back(2, February, 2022);
+    expectedHol.emplace_back(1, March, 2022);
+    expectedHol.emplace_back(9, March, 2022);
+    expectedHol.emplace_back(5, May, 2022);
+    expectedHol.emplace_back(1, June, 2022);
+    expectedHol.emplace_back(6, June, 2022);
+    expectedHol.emplace_back(15, August, 2022);
+    expectedHol.emplace_back(9, September, 2022);
+    expectedHol.emplace_back(12, September, 2022);
+    expectedHol.emplace_back(3, October, 2022);
+    expectedHol.emplace_back(10, October, 2022);
+    expectedHol.emplace_back(30, December, 2022);
+    // expectedHol.emplace_back(1, January, 2023);    // Sunday
+    // expectedHol.emplace_back(21, January, 2023);    // Saturday
+    expectedHol.emplace_back(23, January, 2023);
+    expectedHol.emplace_back(24, January, 2023);
+    expectedHol.emplace_back(1, March, 2023);
+    expectedHol.emplace_back(1, May, 2023);
+    expectedHol.emplace_back(5, May, 2023);
+    expectedHol.emplace_back(29, May, 2023);
+    expectedHol.emplace_back(6, June, 2023);
+    expectedHol.emplace_back(15, August, 2023);
+    expectedHol.emplace_back(28, September, 2023);
+    expectedHol.emplace_back(29, September, 2023);
+    // expectedHol.emplace_back(30, September, 2023);    // Saturday
+    expectedHol.emplace_back(2, October, 2023);
+    expectedHol.emplace_back(3, October, 2023);
+    expectedHol.emplace_back(9, October, 2023);
+    expectedHol.emplace_back(25, December, 2023);
+    expectedHol.emplace_back(29, December, 2023);
+    expectedHol.emplace_back(1, January, 2024);
+    expectedHol.emplace_back(9, February, 2024);
+    // expectedHol.emplace_back(10, February, 2024);    // Saturday
+    expectedHol.emplace_back(12, February, 2024);
+    expectedHol.emplace_back(1, March, 2024);
+    expectedHol.emplace_back(10, April, 2024);
+    expectedHol.emplace_back(1, May, 2024);
+    expectedHol.emplace_back(6, May, 2024);
+    expectedHol.emplace_back(15, May, 2024);
+    expectedHol.emplace_back(6, June, 2024);
+    expectedHol.emplace_back(15, August, 2024);
+    expectedHol.emplace_back(16, September, 2024);
+    expectedHol.emplace_back(17, September, 2024);
+    expectedHol.emplace_back(18, September, 2024);
+    expectedHol.emplace_back(3, October, 2024);
+    expectedHol.emplace_back(9, October, 2024);
+    expectedHol.emplace_back(25, December, 2024);
+    expectedHol.emplace_back(31, December, 2024);
+    expectedHol.emplace_back(1, January, 2025);
+    expectedHol.emplace_back(28, January, 2025);
+    expectedHol.emplace_back(29, January, 2025);
+    expectedHol.emplace_back(30, January, 2025);
+    expectedHol.emplace_back(3, March, 2025);
+    expectedHol.emplace_back(1, May, 2025);
+    expectedHol.emplace_back(5, May, 2025);
+    expectedHol.emplace_back(6, May, 2025);
+    expectedHol.emplace_back(6, June, 2025);
+    expectedHol.emplace_back(15, August, 2025);
+    expectedHol.emplace_back(3, October, 2025);
+    expectedHol.emplace_back(6, October, 2025);
+    expectedHol.emplace_back(7, October, 2025);
+    expectedHol.emplace_back(8, October, 2025);
+    expectedHol.emplace_back(9, October, 2025);
+    expectedHol.emplace_back(25, December, 2025);
+    expectedHol.emplace_back(31, December, 2025);
+    expectedHol.emplace_back(1, January, 2026);
+    expectedHol.emplace_back(16, February, 2026);
+    expectedHol.emplace_back(17, February, 2026);
+    expectedHol.emplace_back(18, February, 2026);
+    expectedHol.emplace_back(2, March, 2026);
+    expectedHol.emplace_back(1, May, 2026);
+    expectedHol.emplace_back(5, May, 2026);
+    expectedHol.emplace_back(25, May, 2026);
+    // expectedHol.emplace_back(6, June, 2026);    // Saturday
+    expectedHol.emplace_back(17, August, 2026);
+    expectedHol.emplace_back(24, September, 2026);
+    expectedHol.emplace_back(25, September, 2026);
+    // expectedHol.emplace_back(26, September, 2026);    // Saturday
+    expectedHol.emplace_back(5, October, 2026);
+    expectedHol.emplace_back(9, October, 2026);
+    expectedHol.emplace_back(25, December, 2026);
+    expectedHol.emplace_back(31, December, 2026);
+    expectedHol.emplace_back(1, January, 2027);
+    // expectedHol.emplace_back(6, February, 2027);    // Saturday
+    expectedHol.emplace_back(8, February, 2027);
+    expectedHol.emplace_back(9, February, 2027);
+    expectedHol.emplace_back(1, March, 2027);
+    // expectedHol.emplace_back(1, May, 2027);    // Saturday
+    expectedHol.emplace_back(5, May, 2027);
+    expectedHol.emplace_back(13, May, 2027);
+    // expectedHol.emplace_back(6, June, 2027);    // Sunday
+    expectedHol.emplace_back(16, August, 2027);
+    expectedHol.emplace_back(14, September, 2027);
+    expectedHol.emplace_back(15, September, 2027);
+    expectedHol.emplace_back(16, September, 2027);
+    expectedHol.emplace_back(4, October, 2027);
+    expectedHol.emplace_back(11, October, 2027);
+    expectedHol.emplace_back(27, December, 2027);
+    expectedHol.emplace_back(31, December, 2027);
+    // expectedHol.emplace_back(1, January, 2028);    // Saturday
+    expectedHol.emplace_back(26, January, 2028);
+    expectedHol.emplace_back(27, January, 2028);
+    expectedHol.emplace_back(28, January, 2028);
+    expectedHol.emplace_back(1, March, 2028);
+    expectedHol.emplace_back(1, May, 2028);
+    expectedHol.emplace_back(2, May, 2028);
+    expectedHol.emplace_back(5, May, 2028);
+    expectedHol.emplace_back(6, June, 2028);
+    expectedHol.emplace_back(15, August, 2028);
+    expectedHol.emplace_back(2, October, 2028);
+    expectedHol.emplace_back(3, October, 2028);
+    expectedHol.emplace_back(4, October, 2028);
+    expectedHol.emplace_back(5, October, 2028);
+    expectedHol.emplace_back(9, October, 2028);
+    expectedHol.emplace_back(25, December, 2028);
+    expectedHol.emplace_back(29, December, 2028);
+    expectedHol.emplace_back(1, January, 2029);
+    expectedHol.emplace_back(12, February, 2029);
+    expectedHol.emplace_back(13, February, 2029);
+    expectedHol.emplace_back(14, February, 2029);
+    expectedHol.emplace_back(1, March, 2029);
+    expectedHol.emplace_back(1, May, 2029);
+    expectedHol.emplace_back(7, May, 2029);
+    expectedHol.emplace_back(21, May, 2029);
+    expectedHol.emplace_back(6, June, 2029);
+    expectedHol.emplace_back(15, August, 2029);
+    expectedHol.emplace_back(21, September, 2029);
+    // expectedHol.emplace_back(22, September, 2029);    // Saturday
+    expectedHol.emplace_back(24, September, 2029);
+    expectedHol.emplace_back(3, October, 2029);
+    expectedHol.emplace_back(9, October, 2029);
+    expectedHol.emplace_back(25, December, 2029);
+    expectedHol.emplace_back(31, December, 2029);
+    expectedHol.emplace_back(1, January, 2030);
+    // expectedHol.emplace_back(2, February, 2030);    // Saturday
+    expectedHol.emplace_back(4, February, 2030);
+    expectedHol.emplace_back(5, February, 2030);
+    expectedHol.emplace_back(1, March, 2030);
+    expectedHol.emplace_back(1, May, 2030);
+    expectedHol.emplace_back(6, May, 2030);
+    expectedHol.emplace_back(9, May, 2030);
+    expectedHol.emplace_back(6, June, 2030);
+    expectedHol.emplace_back(15, August, 2030);
+    expectedHol.emplace_back(11, September, 2030);
+    expectedHol.emplace_back(12, September, 2030);
+    expectedHol.emplace_back(13, September, 2030);
+    expectedHol.emplace_back(3, October, 2030);
+    expectedHol.emplace_back(9, October, 2030);
+    expectedHol.emplace_back(25, December, 2030);
+    expectedHol.emplace_back(31, December, 2030);
+    expectedHol.emplace_back(1, January, 2031);
+    expectedHol.emplace_back(22, January, 2031);
+    expectedHol.emplace_back(23, January, 2031);
+    expectedHol.emplace_back(24, January, 2031);
+    expectedHol.emplace_back(3, March, 2031);
+    expectedHol.emplace_back(1, May, 2031);
+    expectedHol.emplace_back(5, May, 2031);
+    expectedHol.emplace_back(28, May, 2031);
+    expectedHol.emplace_back(6, June, 2031);
+    expectedHol.emplace_back(15, August, 2031);
+    expectedHol.emplace_back(30, September, 2031);
+    expectedHol.emplace_back(1, October, 2031);
+    expectedHol.emplace_back(2, October, 2031);
+    expectedHol.emplace_back(3, October, 2031);
+    expectedHol.emplace_back(9, October, 2031);
+    expectedHol.emplace_back(25, December, 2031);
+    expectedHol.emplace_back(31, December, 2031);
+    expectedHol.emplace_back(1, January, 2032);
+    expectedHol.emplace_back(10, February, 2032);
+    expectedHol.emplace_back(11, February, 2032);
+    expectedHol.emplace_back(12, February, 2032);
+    expectedHol.emplace_back(1, March, 2032);
+    // expectedHol.emplace_back(1, May, 2032);    // Saturday
+    expectedHol.emplace_back(5, May, 2032);
+    expectedHol.emplace_back(17, May, 2032);
+    // expectedHol.emplace_back(6, June, 2032);    // Sunday
+    expectedHol.emplace_back(16, August, 2032);
+    // expectedHol.emplace_back(18, September, 2032);    // Saturday
+    expectedHol.emplace_back(20, September, 2032);
+    expectedHol.emplace_back(21, September, 2032);
+    expectedHol.emplace_back(4, October, 2032);
+    expectedHol.emplace_back(11, October, 2032);
+    expectedHol.emplace_back(27, December, 2032);
+    expectedHol.emplace_back(31, December, 2032);
+    // expectedHol.emplace_back(1, January, 2033);    // Saturday
+    expectedHol.emplace_back(31, January, 2033);
+    expectedHol.emplace_back(1, February, 2033);
+    expectedHol.emplace_back(2, February, 2033);
+    expectedHol.emplace_back(1, March, 2033);
+    // expectedHol.emplace_back(1, May, 2033);    // Sunday
+    expectedHol.emplace_back(5, May, 2033);
+    expectedHol.emplace_back(6, May, 2033);
+    expectedHol.emplace_back(6, June, 2033);
+    expectedHol.emplace_back(15, August, 2033);
+    expectedHol.emplace_back(7, September, 2033);
+    expectedHol.emplace_back(8, September, 2033);
+    expectedHol.emplace_back(9, September, 2033);
+    expectedHol.emplace_back(3, October, 2033);
+    expectedHol.emplace_back(10, October, 2033);
+    expectedHol.emplace_back(26, December, 2033);
+    expectedHol.emplace_back(30, December, 2033);
+    // expectedHol.emplace_back(1, January, 2034);    // Sunday
+    // expectedHol.emplace_back(18, February, 2034);    // Saturday
+    expectedHol.emplace_back(20, February, 2034);
+    expectedHol.emplace_back(21, February, 2034);
+    expectedHol.emplace_back(1, March, 2034);
+    expectedHol.emplace_back(1, May, 2034);
+    expectedHol.emplace_back(5, May, 2034);
+    expectedHol.emplace_back(25, May, 2034);
+    expectedHol.emplace_back(6, June, 2034);
+    expectedHol.emplace_back(15, August, 2034);
+    expectedHol.emplace_back(26, September, 2034);
+    expectedHol.emplace_back(27, September, 2034);
+    expectedHol.emplace_back(28, September, 2034);
+    expectedHol.emplace_back(3, October, 2034);
+    expectedHol.emplace_back(9, October, 2034);
+    expectedHol.emplace_back(25, December, 2034);
+    expectedHol.emplace_back(29, December, 2034);
+    expectedHol.emplace_back(1, January, 2035);
+    expectedHol.emplace_back(7, February, 2035);
+    expectedHol.emplace_back(8, February, 2035);
+    expectedHol.emplace_back(9, February, 2035);
+    expectedHol.emplace_back(1, March, 2035);
+    expectedHol.emplace_back(1, May, 2035);
+    expectedHol.emplace_back(7, May, 2035);
+    expectedHol.emplace_back(15, May, 2035);
+    expectedHol.emplace_back(6, June, 2035);
+    expectedHol.emplace_back(15, August, 2035);
+    // expectedHol.emplace_back(15, September, 2035);    // Saturday
+    expectedHol.emplace_back(17, September, 2035);
+    expectedHol.emplace_back(18, September, 2035);
+    expectedHol.emplace_back(3, October, 2035);
+    expectedHol.emplace_back(9, October, 2035);
+    expectedHol.emplace_back(25, December, 2035);
+    expectedHol.emplace_back(31, December, 2035);
+    expectedHol.emplace_back(1, January, 2036);
+    expectedHol.emplace_back(28, January, 2036);
+    expectedHol.emplace_back(29, January, 2036);
+    expectedHol.emplace_back(30, January, 2036);
+    expectedHol.emplace_back(3, March, 2036);
+    expectedHol.emplace_back(1, May, 2036);
+    expectedHol.emplace_back(5, May, 2036);
+    expectedHol.emplace_back(6, May, 2036);
+    expectedHol.emplace_back(6, June, 2036);
+    expectedHol.emplace_back(15, August, 2036);
+    expectedHol.emplace_back(3, October, 2036);
+    // expectedHol.emplace_back(4, October, 2036);    // Saturday
+    expectedHol.emplace_back(6, October, 2036);
+    expectedHol.emplace_back(7, October, 2036);
+    expectedHol.emplace_back(9, October, 2036);
+    expectedHol.emplace_back(25, December, 2036);
+    expectedHol.emplace_back(31, December, 2036);
+    expectedHol.emplace_back(1, January, 2037);
+    // expectedHol.emplace_back(14, February, 2037);    // Saturday
+    expectedHol.emplace_back(16, February, 2037);
+    expectedHol.emplace_back(17, February, 2037);
+    expectedHol.emplace_back(2, March, 2037);
+    expectedHol.emplace_back(1, May, 2037);
+    expectedHol.emplace_back(5, May, 2037);
+    expectedHol.emplace_back(22, May, 2037);
+    // expectedHol.emplace_back(6, June, 2037);    // Saturday
+    expectedHol.emplace_back(17, August, 2037);
+    expectedHol.emplace_back(23, September, 2037);
+    expectedHol.emplace_back(24, September, 2037);
+    expectedHol.emplace_back(25, September, 2037);
+    expectedHol.emplace_back(5, October, 2037);
+    expectedHol.emplace_back(9, October, 2037);
+    expectedHol.emplace_back(25, December, 2037);
+    expectedHol.emplace_back(31, December, 2037);
+    expectedHol.emplace_back(1, January, 2038);
+    expectedHol.emplace_back(3, February, 2038);
+    expectedHol.emplace_back(4, February, 2038);
+    expectedHol.emplace_back(5, February, 2038);
+    expectedHol.emplace_back(1, March, 2038);
+    // expectedHol.emplace_back(1, May, 2038);    // Saturday
+    expectedHol.emplace_back(5, May, 2038);
+    expectedHol.emplace_back(11, May, 2038);
+    // expectedHol.emplace_back(6, June, 2038);    // Sunday
+    expectedHol.emplace_back(16, August, 2038);
+    expectedHol.emplace_back(13, September, 2038);
+    expectedHol.emplace_back(14, September, 2038);
+    expectedHol.emplace_back(15, September, 2038);
+    expectedHol.emplace_back(4, October, 2038);
+    expectedHol.emplace_back(11, October, 2038);
+    expectedHol.emplace_back(27, December, 2038);
+    expectedHol.emplace_back(31, December, 2038);
+    // expectedHol.emplace_back(1, January, 2039);    // Saturday
+    expectedHol.emplace_back(24, January, 2039);
+    expectedHol.emplace_back(25, January, 2039);
+    expectedHol.emplace_back(26, January, 2039);
+    expectedHol.emplace_back(1, March, 2039);
+    // expectedHol.emplace_back(1, May, 2039);    // Sunday
+    expectedHol.emplace_back(2, May, 2039);
+    expectedHol.emplace_back(5, May, 2039);
+    expectedHol.emplace_back(6, June, 2039);
+    expectedHol.emplace_back(15, August, 2039);
+    // expectedHol.emplace_back(1, October, 2039);    // Saturday
+    expectedHol.emplace_back(3, October, 2039);
+    expectedHol.emplace_back(4, October, 2039);
+    expectedHol.emplace_back(5, October, 2039);
+    expectedHol.emplace_back(10, October, 2039);
+    expectedHol.emplace_back(26, December, 2039);
+    expectedHol.emplace_back(30, December, 2039);
+    // expectedHol.emplace_back(1, January, 2040);    // Sunday
+    // expectedHol.emplace_back(11, February, 2040);    // Saturday
+    expectedHol.emplace_back(13, February, 2040);
+    expectedHol.emplace_back(14, February, 2040);
+    expectedHol.emplace_back(1, March, 2040);
+    expectedHol.emplace_back(1, May, 2040);
+    expectedHol.emplace_back(7, May, 2040);
+    expectedHol.emplace_back(18, May, 2040);
+    expectedHol.emplace_back(6, June, 2040);
+    expectedHol.emplace_back(15, August, 2040);
+    expectedHol.emplace_back(20, September, 2040);
+    expectedHol.emplace_back(21, September, 2040);
+    // expectedHol.emplace_back(22, September, 2040);    // Saturday
+    expectedHol.emplace_back(3, October, 2040);
+    expectedHol.emplace_back(9, October, 2040);
+    expectedHol.emplace_back(25, December, 2040);
+    expectedHol.emplace_back(31, December, 2040);
+    expectedHol.emplace_back(1, January, 2041);
+    expectedHol.emplace_back(31, January, 2041);
+    expectedHol.emplace_back(1, February, 2041);
+    // expectedHol.emplace_back(2, February, 2041);    // Saturday
+    expectedHol.emplace_back(1, March, 2041);
+    expectedHol.emplace_back(1, May, 2041);
+    expectedHol.emplace_back(6, May, 2041);
+    expectedHol.emplace_back(7, May, 2041);
+    expectedHol.emplace_back(6, June, 2041);
+    expectedHol.emplace_back(15, August, 2041);
+    expectedHol.emplace_back(9, September, 2041);
+    expectedHol.emplace_back(10, September, 2041);
+    expectedHol.emplace_back(11, September, 2041);
+    expectedHol.emplace_back(3, October, 2041);
+    expectedHol.emplace_back(9, October, 2041);
+    expectedHol.emplace_back(25, December, 2041);
+    expectedHol.emplace_back(31, December, 2041);
+    expectedHol.emplace_back(1, January, 2042);
+    expectedHol.emplace_back(21, January, 2042);
+    expectedHol.emplace_back(22, January, 2042);
+    expectedHol.emplace_back(23, January, 2042);
+    expectedHol.emplace_back(3, March, 2042);
+    expectedHol.emplace_back(1, May, 2042);
+    expectedHol.emplace_back(5, May, 2042);
+    expectedHol.emplace_back(26, May, 2042);
+    expectedHol.emplace_back(6, June, 2042);
+    expectedHol.emplace_back(15, August, 2042);
+    // expectedHol.emplace_back(27, September, 2042);    // Saturday
+    expectedHol.emplace_back(29, September, 2042);
+    expectedHol.emplace_back(30, September, 2042);
+    expectedHol.emplace_back(3, October, 2042);
+    expectedHol.emplace_back(9, October, 2042);
+    expectedHol.emplace_back(25, December, 2042);
+    expectedHol.emplace_back(31, December, 2042);
+    expectedHol.emplace_back(1, January, 2043);
+    expectedHol.emplace_back(9, February, 2043);
+    expectedHol.emplace_back(10, February, 2043);
+    expectedHol.emplace_back(11, February, 2043);
+    expectedHol.emplace_back(2, March, 2043);
+    expectedHol.emplace_back(1, May, 2043);
+    expectedHol.emplace_back(5, May, 2043);
+    expectedHol.emplace_back(18, May, 2043);
+    // expectedHol.emplace_back(6, June, 2043);    // Saturday
+    expectedHol.emplace_back(17, August, 2043);
+    expectedHol.emplace_back(16, September, 2043);
+    expectedHol.emplace_back(17, September, 2043);
+    expectedHol.emplace_back(18, September, 2043);
+    expectedHol.emplace_back(5, October, 2043);
+    expectedHol.emplace_back(9, October, 2043);
+    expectedHol.emplace_back(25, December, 2043);
+    expectedHol.emplace_back(31, December, 2043);
+    expectedHol.emplace_back(1, January, 2044);
+    expectedHol.emplace_back(29, January, 2044);
+    // expectedHol.emplace_back(30, January, 2044);    // Saturday
+    expectedHol.emplace_back(1, February, 2044);
+    expectedHol.emplace_back(1, March, 2044);
+    // expectedHol.emplace_back(1, May, 2044);    // Sunday
+    expectedHol.emplace_back(5, May, 2044);
+    expectedHol.emplace_back(6, May, 2044);
+    expectedHol.emplace_back(6, June, 2044);
+    expectedHol.emplace_back(15, August, 2044);
+    expectedHol.emplace_back(3, October, 2044);
+    expectedHol.emplace_back(4, October, 2044);
+    expectedHol.emplace_back(5, October, 2044);
+    expectedHol.emplace_back(6, October, 2044);
+    expectedHol.emplace_back(10, October, 2044);
+    expectedHol.emplace_back(26, December, 2044);
+    expectedHol.emplace_back(30, December, 2044);
+    // expectedHol.emplace_back(1, January, 2045);    // Sunday
+    expectedHol.emplace_back(16, February, 2045);
+    expectedHol.emplace_back(17, February, 2045);
+    // expectedHol.emplace_back(18, February, 2045);    // Saturday
+    expectedHol.emplace_back(1, March, 2045);
+    expectedHol.emplace_back(1, May, 2045);
+    expectedHol.emplace_back(5, May, 2045);
+    expectedHol.emplace_back(24, May, 2045);
+    expectedHol.emplace_back(6, June, 2045);
+    expectedHol.emplace_back(15, August, 2045);
+    expectedHol.emplace_back(25, September, 2045);
+    expectedHol.emplace_back(26, September, 2045);
+    expectedHol.emplace_back(27, September, 2045);
+    expectedHol.emplace_back(3, October, 2045);
+    expectedHol.emplace_back(9, October, 2045);
+    expectedHol.emplace_back(25, December, 2045);
+    expectedHol.emplace_back(29, December, 2045);
+    expectedHol.emplace_back(1, January, 2046);
+    expectedHol.emplace_back(5, February, 2046);
+    expectedHol.emplace_back(6, February, 2046);
+    expectedHol.emplace_back(7, February, 2046);
+    expectedHol.emplace_back(1, March, 2046);
+    expectedHol.emplace_back(1, May, 2046);
+    expectedHol.emplace_back(7, May, 2046);
+    expectedHol.emplace_back(14, May, 2046);
+    expectedHol.emplace_back(6, June, 2046);
+    expectedHol.emplace_back(15, August, 2046);
+    expectedHol.emplace_back(14, September, 2046);
+    // expectedHol.emplace_back(15, September, 2046);    // Saturday
+    expectedHol.emplace_back(17, September, 2046);
+    expectedHol.emplace_back(3, October, 2046);
+    expectedHol.emplace_back(9, October, 2046);
+    expectedHol.emplace_back(25, December, 2046);
+    expectedHol.emplace_back(31, December, 2046);
+    expectedHol.emplace_back(1, January, 2047);
+    expectedHol.emplace_back(25, January, 2047);
+    // expectedHol.emplace_back(26, January, 2047);    // Saturday
+    expectedHol.emplace_back(28, January, 2047);
+    expectedHol.emplace_back(1, March, 2047);
+    expectedHol.emplace_back(1, May, 2047);
+    expectedHol.emplace_back(2, May, 2047);
+    expectedHol.emplace_back(6, May, 2047);
+    expectedHol.emplace_back(6, June, 2047);
+    expectedHol.emplace_back(15, August, 2047);
+    expectedHol.emplace_back(3, October, 2047);
+    expectedHol.emplace_back(4, October, 2047);
+    // expectedHol.emplace_back(5, October, 2047);    // Saturday
+    expectedHol.emplace_back(7, October, 2047);
+    expectedHol.emplace_back(9, October, 2047);
+    expectedHol.emplace_back(25, December, 2047);
+    expectedHol.emplace_back(31, December, 2047);
+    expectedHol.emplace_back(1, January, 2048);
+    expectedHol.emplace_back(13, February, 2048);
+    expectedHol.emplace_back(14, February, 2048);
+    // expectedHol.emplace_back(15, February, 2048);    // Saturday
+    expectedHol.emplace_back(2, March, 2048);
+    expectedHol.emplace_back(1, May, 2048);
+    expectedHol.emplace_back(5, May, 2048);
+    expectedHol.emplace_back(20, May, 2048);
+    // expectedHol.emplace_back(6, June, 2048);    // Saturday
+    expectedHol.emplace_back(17, August, 2048);
+    expectedHol.emplace_back(21, September, 2048);
+    expectedHol.emplace_back(22, September, 2048);
+    expectedHol.emplace_back(23, September, 2048);
+    expectedHol.emplace_back(5, October, 2048);
+    expectedHol.emplace_back(9, October, 2048);
+    expectedHol.emplace_back(25, December, 2048);
+    expectedHol.emplace_back(31, December, 2048);
+    expectedHol.emplace_back(1, January, 2049);
+    expectedHol.emplace_back(1, February, 2049);
+    expectedHol.emplace_back(2, February, 2049);
+    expectedHol.emplace_back(3, February, 2049);
+    expectedHol.emplace_back(1, March, 2049);
+    // expectedHol.emplace_back(1, May, 2049);    // Saturday
+    expectedHol.emplace_back(5, May, 2049);
+    expectedHol.emplace_back(10, May, 2049);
+    // expectedHol.emplace_back(6, June, 2049);    // Sunday
+    expectedHol.emplace_back(16, August, 2049);
+    expectedHol.emplace_back(10, September, 2049);
+    // expectedHol.emplace_back(11, September, 2049);    // Saturday
+    expectedHol.emplace_back(13, September, 2049);
+    expectedHol.emplace_back(4, October, 2049);
+    expectedHol.emplace_back(11, October, 2049);
+    expectedHol.emplace_back(27, December, 2049);
+    expectedHol.emplace_back(31, December, 2049);
+    // expectedHol.emplace_back(1, January, 2050);    // Saturday
+    // expectedHol.emplace_back(22, January, 2050);    // Saturday
+    expectedHol.emplace_back(24, January, 2050);
+    expectedHol.emplace_back(25, January, 2050);
+    expectedHol.emplace_back(1, March, 2050);
+    // expectedHol.emplace_back(1, May, 2050);    // Sunday
+    expectedHol.emplace_back(5, May, 2050);
+    expectedHol.emplace_back(30, May, 2050);
+    expectedHol.emplace_back(6, June, 2050);
+    expectedHol.emplace_back(15, August, 2050);
+    expectedHol.emplace_back(29, September, 2050);
+    expectedHol.emplace_back(30, September, 2050);
+    // expectedHol.emplace_back(1, October, 2050);    // Saturday
+    expectedHol.emplace_back(3, October, 2050);
+    expectedHol.emplace_back(10, October, 2050);
+    expectedHol.emplace_back(26, December, 2050);
+    expectedHol.emplace_back(30, December, 2050);
 
     Calendar c = SouthKorea(SouthKorea::KRX);
-    std::vector<Date> hol = c.holidayList(Date(1, January, 2004), Date(31, December, 2007));
+    std::vector<Date> hol = c.holidayList(Date(1, January, 2004), Date(31, December, 2050));
 
     for (Size i = 0; i < std::min<Size>(hol.size(), expectedHol.size()); i++) {
         if (hol[i] != expectedHol[i])
@@ -1546,7 +2948,7 @@ void CalendarTest::testKoreaStockExchange() {
                                  << hol.size() << " calculated holidays");
 }
 
-void CalendarTest::testChinaSSE() {
+BOOST_AUTO_TEST_CASE(testChinaSSE) {
     BOOST_TEST_MESSAGE("Testing China Shanghai Stock Exchange holiday list...");
 
     std::vector<Date> expectedHol;
@@ -1705,8 +3107,48 @@ void CalendarTest::testChinaSSE() {
     expectedHol.emplace_back(6, October, 2021);
     expectedHol.emplace_back(7, October, 2021);
 
+    // China Shanghai Securities Exchange holiday list in the year 2022
+    expectedHol.emplace_back(3, Jan, 2022);
+    expectedHol.emplace_back(31, Jan, 2022);
+    expectedHol.emplace_back(1, Feb, 2022);
+    expectedHol.emplace_back(2, Feb, 2022);
+    expectedHol.emplace_back(3, Feb, 2022);
+    expectedHol.emplace_back(4, Feb, 2022);
+    expectedHol.emplace_back(4, April, 2022);
+    expectedHol.emplace_back(5, April, 2022);
+    expectedHol.emplace_back(2, May, 2022);
+    expectedHol.emplace_back(3, May, 2022);
+    expectedHol.emplace_back(4, May, 2022);
+    expectedHol.emplace_back(3, June, 2022);
+    expectedHol.emplace_back(12, September, 2022);
+    expectedHol.emplace_back(3, October, 2022);
+    expectedHol.emplace_back(4, October, 2022);
+    expectedHol.emplace_back(5, October, 2022);
+    expectedHol.emplace_back(6, October, 2022);
+    expectedHol.emplace_back(7, October, 2022);
+
+    // China Shanghai Securities Exchange holiday list in the year 2023
+    expectedHol.emplace_back(2, Jan, 2023);
+    expectedHol.emplace_back(23, Jan, 2023);
+    expectedHol.emplace_back(24, Jan, 2023);
+    expectedHol.emplace_back(25, Jan, 2023);
+    expectedHol.emplace_back(26, Jan, 2023);
+    expectedHol.emplace_back(27, Jan, 2023);
+    expectedHol.emplace_back(5, April, 2023);
+    expectedHol.emplace_back(1, May, 2023);
+    expectedHol.emplace_back(2, May, 2023);
+    expectedHol.emplace_back(3, May, 2023);
+    expectedHol.emplace_back(22, June, 2023);
+    expectedHol.emplace_back(23, June, 2023);
+    expectedHol.emplace_back(29, September, 2023);
+    expectedHol.emplace_back(2, October, 2023);
+    expectedHol.emplace_back(3, October, 2023);
+    expectedHol.emplace_back(4, October, 2023);
+    expectedHol.emplace_back(5, October, 2023);
+    expectedHol.emplace_back(6, October, 2023);
+
     Calendar c = China(China::SSE);
-    std::vector<Date> hol = c.holidayList(Date(1, January, 2014), Date(31, December, 2021));
+    std::vector<Date> hol = c.holidayList(Date(1, January, 2014), Date(31, December, 2023));
 
     for (Size i = 0; i < std::min<Size>(hol.size(), expectedHol.size()); i++) {
         if (hol[i] != expectedHol[i])
@@ -1718,7 +3160,7 @@ void CalendarTest::testChinaSSE() {
                                  << hol.size() << " calculated holidays");
 }
 
-void CalendarTest::testChinaIB() {
+BOOST_AUTO_TEST_CASE(testChinaIB) {
     BOOST_TEST_MESSAGE("Testing China Inter Bank working weekends list...");
 
     std::vector<Date> expectedWorkingWeekEnds;
@@ -1786,10 +3228,27 @@ void CalendarTest::testChinaIB() {
     expectedWorkingWeekEnds.emplace_back(26, September, 2021);
     expectedWorkingWeekEnds.emplace_back(9, October, 2021);
 
+    // China Inter Bank working weekends list in the year 2022
+    expectedWorkingWeekEnds.emplace_back(29, Jan, 2022);
+    expectedWorkingWeekEnds.emplace_back(30, Jan, 2022);
+    expectedWorkingWeekEnds.emplace_back(2, April, 2022);
+    expectedWorkingWeekEnds.emplace_back(24, April, 2022);
+    expectedWorkingWeekEnds.emplace_back(7, May, 2022);
+    expectedWorkingWeekEnds.emplace_back(8, October, 2022);
+    expectedWorkingWeekEnds.emplace_back(9, October, 2022);
+
+    // China Inter Bank working weekends list in the year 2023
+    expectedWorkingWeekEnds.emplace_back(28, Jan, 2023);
+    expectedWorkingWeekEnds.emplace_back(29, Jan, 2023);
+    expectedWorkingWeekEnds.emplace_back(23, April, 2023);
+    expectedWorkingWeekEnds.emplace_back(6, May, 2023);
+    expectedWorkingWeekEnds.emplace_back(25, June, 2023);
+    expectedWorkingWeekEnds.emplace_back(7, October, 2023);
+    expectedWorkingWeekEnds.emplace_back(8, October, 2023);
 
     Calendar c = China(China::IB);
     Date start(1, Jan, 2014);
-    Date end(31, Dec, 2021);
+    Date end(31, Dec, 2023);
 
     Size k = 0;
 
@@ -1810,7 +3269,7 @@ void CalendarTest::testChinaIB() {
                                  << " calculated working weekends");
 }
 
-void CalendarTest::testEndOfMonth() {
+BOOST_AUTO_TEST_CASE(testEndOfMonth) {
     BOOST_TEST_MESSAGE("Testing end-of-month calculation...");
 
     Calendar c = TARGET(); // any calendar would be OK
@@ -1831,7 +3290,7 @@ void CalendarTest::testEndOfMonth() {
     }
 }
 
-void CalendarTest::testBusinessDaysBetween() {
+BOOST_AUTO_TEST_CASE(testBusinessDaysBetween) {
 
     BOOST_TEST_MESSAGE("Testing calculation of business days between dates...");
 
@@ -1906,8 +3365,7 @@ void CalendarTest::testBusinessDaysBetween() {
     }
 }
 
-
-void CalendarTest::testBespokeCalendars() {
+BOOST_AUTO_TEST_CASE(testBespokeCalendars) {
 
     BOOST_TEST_MESSAGE("Testing bespoke calendars...");
 
@@ -2020,8 +3478,9 @@ void CalendarTest::testBespokeCalendars() {
         BOOST_ERROR(testDate4 << " (marked as holiday) not detected");
 }
 
-void CalendarTest::testIntradayAddHolidays() {
 #ifdef QL_HIGH_RESOLUTION_DATE
+BOOST_AUTO_TEST_CASE(testIntradayAddHolidays) {
+
     BOOST_TEST_MESSAGE("Testing addHolidays with enable-intraday...");
 
     // test cases taken from testModifiedCalendars
@@ -2107,15 +3566,18 @@ void CalendarTest::testIntradayAddHolidays() {
                           << " and different hours/min/secs");
     if (c1.isHoliday(d2Mock))
         BOOST_FAIL(d2Mock << " still a holiday and different hours/min/secs");
-
-#endif
 }
+#endif
 
-void CalendarTest::testDayLists() {
+BOOST_AUTO_TEST_CASE(testDayLists) {
 
     BOOST_TEST_MESSAGE("Testing holidayList and businessDaysList...");
     Calendar germany = Germany();
     Date firstDate = Settings::instance().evaluationDate(), endDate = firstDate + 1 * Years;
+
+    // Test that same day holidayList and businessDayList does not throw an error
+    germany.holidayList(firstDate, firstDate, true);
+    germany.businessDayList(firstDate, firstDate);
 
     std::vector<Date> holidays = germany.holidayList(firstDate, endDate, true);
     std::vector<Date> businessDays = germany.businessDayList(firstDate, endDate);
@@ -2137,45 +3599,6 @@ void CalendarTest::testDayLists() {
     }
 }
 
-test_suite* CalendarTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Calendar tests");
+BOOST_AUTO_TEST_SUITE_END()
 
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testBrazil));
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testRussia));
-
-    //    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testItalySettlement));
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testItalyExchange));
-
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testUKSettlement));
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testUKExchange));
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testUKMetals));
-
-    //    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testGermanySettlement));
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testGermanyFrankfurt));
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testGermanyXetra));
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testGermanyEurex));
-
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testTARGET));
-
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testUSSettlement));
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testUSGovernmentBondMarket));
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testUSNewYorkStockExchange));
-
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testSouthKoreanSettlement));
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testKoreaStockExchange));
-
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testChinaSSE));
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testChinaIB));
-
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testModifiedCalendars));
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testJointCalendars));
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testBespokeCalendars));
-
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testEndOfMonth));
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testBusinessDaysBetween));
-
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testIntradayAddHolidays));
-    suite->add(QUANTLIB_TEST_CASE(&CalendarTest::testDayLists));
-
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

@@ -1,6 +1,6 @@
 
-SUBDIRS = amortizingbonds asian averageois barrieroption basismodels \
-          callablebonds catbonds commodities convertiblebonds coupons credit \
+SUBDIRS = asian averageois barrieroption basismodels \
+          callablebonds catbonds commodities coupons credit \
           exoticoptions finitedifferences forward fx inflation lattices \
           math mcbasket models processes risk shortrate swaptions \
           termstructures variancegamma varianceoption volatility
@@ -14,7 +14,6 @@ this_include_HEADERS = \
 libExperimental_la_SOURCES =
 
 libExperimental_la_LIBADD = \
-    amortizingbonds/libAmortizingBonds.la \
     asian/libAsian.la \
     averageois/libAverageOIS.la \
     barrieroption/libBarrierOption.la \
@@ -22,7 +21,6 @@ libExperimental_la_LIBADD = \
     callablebonds/libCallableBonds.la \
     catbonds/libCatBonds.la \
     commodities/libCommodities.la \
-    convertiblebonds/libConvertibleBonds.la \
     coupons/libCoupons.la \
     credit/libCredit.la \
     exoticoptions/libExoticOptions.la \

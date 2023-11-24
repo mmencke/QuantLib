@@ -42,7 +42,7 @@ using namespace boost::unit_test_framework;
 
 namespace optionlet_stripper_test {
 
-struct CommonVars {
+    struct CommonVars {
         // global data
         Calendar calendar;
         DayCounter dayCounter;
@@ -66,9 +66,6 @@ struct CommonVars {
 
         Real accuracy;
         Real tolerance;
-
-        // cleanup
-        SavedSettings backup;
 
         CommonVars() {
             accuracy = 1.0e-6;
@@ -381,7 +378,7 @@ struct CommonVars {
                                                optionTenors, strikes, termV,
                                                dayCounter);
         }
-};
+    };
 }
 
 void OptionletStripperTest::testFlatTermVolatilityStripping1() {
@@ -656,7 +653,7 @@ void OptionletStripperTest::testFlatTermVolatilityStripping2() {
   using namespace optionlet_stripper_test;
 
   CommonVars vars;
-  Settings::instance().evaluationDate() = Date::todaysDate();
+  Settings::instance().evaluationDate() = Date(28, October, 2013);
 
   vars.setFlatTermVolCurve();
   vars.setFlatTermVolSurface();
@@ -725,7 +722,7 @@ void OptionletStripperTest::testTermVolatilityStripping2() {
   using namespace optionlet_stripper_test;
 
   CommonVars vars;
-  Settings::instance().evaluationDate() = Date::todaysDate();
+  Settings::instance().evaluationDate() = Date(30, April, 2015);
 
   vars.setCapFloorTermVolCurve();
   vars.setCapFloorTermVolSurface();
@@ -789,6 +786,8 @@ void OptionletStripperTest::testSwitchStrike() {
 
     using namespace optionlet_stripper_test;
 
+    bool usingAtParCoupons  = IborCoupon::Settings::instance().usingAtParCoupons();
+
     CommonVars vars;
     Settings::instance().evaluationDate() = Date(28, October, 2013);
     vars.setCapFloorTermVolSurface();
@@ -803,11 +802,7 @@ void OptionletStripperTest::testSwitchStrike() {
         new OptionletStripper1(vars.capFloorVolSurface, iborIndex,
                                Null< Rate >(), vars.accuracy));
 
-    Real expected;
-    if (!IborCoupon::usingAtParCoupons())
-        expected = 0.02981258;
-    else
-        expected = 0.02981223;
+    Real expected = usingAtParCoupons ? 0.02981223 : 0.02981258;
 
     Real error = std::fabs(optionletStripper1->switchStrike() - expected);
     if (error > vars.tolerance)
@@ -821,10 +816,7 @@ void OptionletStripperTest::testSwitchStrike() {
     yieldTermStructure.linkTo(ext::make_shared< FlatForward >(
         0, vars.calendar, 0.05, vars.dayCounter));
 
-    if (!IborCoupon::usingAtParCoupons())
-        expected = 0.0499381;
-    else
-        expected = 0.0499371;
+    expected = usingAtParCoupons ? 0.0499371 : 0.0499381;
 
     error = std::fabs(optionletStripper1->switchStrike() - expected);
     if (error > vars.tolerance)
@@ -838,20 +830,13 @@ void OptionletStripperTest::testSwitchStrike() {
 
 test_suite* OptionletStripperTest::suite() {
     auto* suite = BOOST_TEST_SUITE("OptionletStripper Tests");
-    suite->add(QUANTLIB_TEST_CASE(
-                   &OptionletStripperTest::testFlatTermVolatilityStripping1));
-    suite->add(QUANTLIB_TEST_CASE(
-                       &OptionletStripperTest::testTermVolatilityStripping1));
-    suite->add(QUANTLIB_TEST_CASE(
-                   &OptionletStripperTest::testFlatTermVolatilityStripping2));
-    suite->add(QUANTLIB_TEST_CASE(
-                       &OptionletStripperTest::testTermVolatilityStripping2));
-    suite->add(QUANTLIB_TEST_CASE(
-                       &OptionletStripperTest::testSwitchStrike));
-    suite->add(QUANTLIB_TEST_CASE(
-        &OptionletStripperTest::testTermVolatilityStrippingNormalVol));
-    suite->add(QUANTLIB_TEST_CASE(
-        &OptionletStripperTest::testTermVolatilityStrippingShiftedLogNormalVol));
+    suite->add(QUANTLIB_TEST_CASE(&OptionletStripperTest::testFlatTermVolatilityStripping1));
+    suite->add(QUANTLIB_TEST_CASE(&OptionletStripperTest::testTermVolatilityStripping1));
+    suite->add(QUANTLIB_TEST_CASE(&OptionletStripperTest::testFlatTermVolatilityStripping2));
+    suite->add(QUANTLIB_TEST_CASE(&OptionletStripperTest::testTermVolatilityStripping2));
+    suite->add(QUANTLIB_TEST_CASE(&OptionletStripperTest::testSwitchStrike));
+    suite->add(QUANTLIB_TEST_CASE(&OptionletStripperTest::testTermVolatilityStrippingNormalVol));
+    suite->add(QUANTLIB_TEST_CASE(&OptionletStripperTest::testTermVolatilityStrippingShiftedLogNormalVol));
 
     return suite;
 }

@@ -41,14 +41,14 @@ class PiecewiseYieldCurveTest {
     static void testConvexMonotoneForwardConsistency();
     static void testLocalBootstrapConsistency();
 
+    static void testParFraRegression();
+
+    static void testDefaultInstantiation();
+
     static void testObservability();
     static void testLiborFixing();
 
     static void testJpyLibor();
-
-    static void testDiscountCopy();
-    static void testForwardCopy();
-    static void testZeroCopy();
 
     static void testSwapRateHelperLastRelevantDate();
     static void testSwapRateHelperSpotDate();

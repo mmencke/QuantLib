@@ -29,11 +29,12 @@
 #include <ql/indexes/swapindex.hpp>
 #include <ql/instruments/floatfloatswap.hpp>
 #include <ql/termstructures/yieldtermstructure.hpp>
+#include <ql/optional.hpp>
 #include <utility>
 
 namespace QuantLib {
 
-    FloatFloatSwap::FloatFloatSwap(const VanillaSwap::Type type,
+    FloatFloatSwap::FloatFloatSwap(const Swap::Type type,
                                    const Real nominal1,
                                    const Real nominal2,
                                    const Schedule& schedule1,
@@ -52,8 +53,8 @@ namespace QuantLib {
                                    const Real spread2,
                                    const Real cappedRate2,
                                    const Real flooredRate2,
-                                   const boost::optional<BusinessDayConvention>& paymentConvention1,
-                                   const boost::optional<BusinessDayConvention>& paymentConvention2)
+                                   const ext::optional<BusinessDayConvention>& paymentConvention1,
+                                   const ext::optional<BusinessDayConvention>& paymentConvention2)
     : Swap(2), type_(type), nominal1_(std::vector<Real>(schedule1.size() - 1, nominal1)),
       nominal2_(std::vector<Real>(schedule2.size() - 1, nominal2)), schedule1_(schedule1),
       schedule2_(schedule2), index1_(std::move(index1)), index2_(std::move(index2)),
@@ -72,7 +73,7 @@ namespace QuantLib {
         init(paymentConvention1, paymentConvention2);
     }
 
-    FloatFloatSwap::FloatFloatSwap(const VanillaSwap::Type type,
+    FloatFloatSwap::FloatFloatSwap(const Swap::Type type,
                                    std::vector<Real> nominal1,
                                    std::vector<Real> nominal2,
                                    Schedule schedule1,
@@ -91,8 +92,8 @@ namespace QuantLib {
                                    std::vector<Real> spread2,
                                    std::vector<Real> cappedRate2,
                                    std::vector<Real> flooredRate2,
-                                   const boost::optional<BusinessDayConvention>& paymentConvention1,
-                                   const boost::optional<BusinessDayConvention>& paymentConvention2)
+                                   const ext::optional<BusinessDayConvention>& paymentConvention1,
+                                   const ext::optional<BusinessDayConvention>& paymentConvention2)
     : Swap(2), type_(type), nominal1_(std::move(nominal1)), nominal2_(std::move(nominal2)),
       schedule1_(std::move(schedule1)), schedule2_(std::move(schedule2)),
       index1_(std::move(index1)), index2_(std::move(index2)), gearing1_(std::move(gearing1)),
@@ -107,8 +108,8 @@ namespace QuantLib {
     }
 
     void FloatFloatSwap::init(
-        boost::optional<BusinessDayConvention> paymentConvention1,
-        boost::optional<BusinessDayConvention> paymentConvention2) {
+        ext::optional<BusinessDayConvention> paymentConvention1,
+        ext::optional<BusinessDayConvention> paymentConvention2) {
 
         QL_REQUIRE(nominal1_.size() == schedule1_.size() - 1,
                    "nominal1 size (" << nominal1_.size()
@@ -217,10 +218,10 @@ namespace QuantLib {
         // if the gearing is zero then the ibor / cms leg will be set up with
         // fixed coupons which makes trouble here in this context. We therefore
         // use a dirty trick and enforce the gearing to be non zero.
-        for (double& i : gearing1_)
+        for (Real& i : gearing1_)
             if (close(i, 0.0))
                 i = QL_EPSILON;
-        for (double& i : gearing2_)
+        for (Real& i : gearing2_)
             if (close(i, 0.0))
                 i = QL_EPSILON;
 
@@ -373,11 +374,11 @@ namespace QuantLib {
             registerWith(*i);
 
         switch (type_) {
-        case VanillaSwap::Payer:
+        case Swap::Payer:
             payer_[0] = -1.0;
             payer_[1] = +1.0;
             break;
-        case VanillaSwap::Receiver:
+        case Swap::Receiver:
             payer_[0] = +1.0;
             payer_[1] = -1.0;
             break;

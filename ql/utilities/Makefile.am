@@ -7,7 +7,6 @@ this_include_HEADERS = \
     clone.hpp \
     dataformatters.hpp \
     dataparsers.hpp \
-    disposable.hpp \
     null.hpp \
 	null_deleter.hpp \
     observablevalue.hpp \

@@ -21,7 +21,7 @@
 */
 
 
-#include "blackformula.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/pricingengines/blackformula.hpp>
 #include <cmath>
@@ -29,8 +29,11 @@
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
 
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
 
-void BlackFormulaTest::testBachelierImpliedVol(){
+BOOST_AUTO_TEST_SUITE(BlackFormulaTest)
+
+BOOST_AUTO_TEST_CASE(testBachelierImpliedVol){
 
 
     BOOST_TEST_MESSAGE("Testing Bachelier implied vol...");
@@ -43,7 +46,7 @@ void BlackFormulaTest::testBachelierImpliedVol(){
     Real discount = 0.95;
 
     Real d[] = {-3.0, -2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 3.0};
-    for (double i : d) {
+    for (Real i : d) {
 
 
         Real strike = forward - i * bpvol * std::sqrt(tte);
@@ -58,7 +61,7 @@ void BlackFormulaTest::testBachelierImpliedVol(){
     }
 }
 
-void BlackFormulaTest::testChambersImpliedVol() {
+BOOST_AUTO_TEST_CASE(testChambersImpliedVol) {
 
     BOOST_TEST_MESSAGE("Testing Chambers-Nawalkha implied vol approximation...");
 
@@ -74,11 +77,11 @@ void BlackFormulaTest::testChambersImpliedVol() {
     Real tol = 5.0E-4;
 
     for (auto& type : types) {
-        for (double& displacement : displacements) {
-            for (double& forward : forwards) {
-                for (double& strike : strikes) {
-                    for (double& stdDev : stdDevs) {
-                        for (double& discount : discounts) {
+        for (Real& displacement : displacements) {
+            for (Real& forward : forwards) {
+                for (Real& strike : strikes) {
+                    for (Real& stdDev : stdDevs) {
+                        for (Real& discount : discounts) {
                             if (forward + displacement > 0.0 && strike + displacement > 0.0) {
                                 Real premium = blackFormula(type, strike, forward, stdDev, discount,
                                                             displacement);
@@ -107,7 +110,7 @@ void BlackFormulaTest::testChambersImpliedVol() {
     }
 }
 
-void BlackFormulaTest::testRadoicicStefanicaImpliedVol() {
+BOOST_AUTO_TEST_CASE(testRadoicicStefanicaImpliedVol) {
 
     BOOST_TEST_MESSAGE(
         "Testing Radoicic-Stefanica implied vol approximation...");
@@ -127,7 +130,7 @@ void BlackFormulaTest::testRadoicicStefanicaImpliedVol() {
 
     const Real tol = 0.02;
 
-    for (double strike : strikes) {
+    for (Real strike : strikes) {
         for (auto type : types) {
             const ext::shared_ptr<PlainVanillaPayoff> payoff(
                 ext::make_shared<PlainVanillaPayoff>(type, strike));
@@ -154,7 +157,7 @@ void BlackFormulaTest::testRadoicicStefanicaImpliedVol() {
     }
 }
 
-void BlackFormulaTest::testRadoicicStefanicaLowerBound() {
+BOOST_AUTO_TEST_CASE(testRadoicicStefanicaLowerBound) {
 
     BOOST_TEST_MESSAGE("Testing Radoicic-Stefanica lower bound...");
 
@@ -195,11 +198,9 @@ void BlackFormulaTest::testRadoicicStefanicaLowerBound() {
     }
 }
 
-void BlackFormulaTest::testImpliedVolAdaptiveSuccessiveOverRelaxation() {
+BOOST_AUTO_TEST_CASE(testImpliedVolAdaptiveSuccessiveOverRelaxation) {
     BOOST_TEST_MESSAGE("Testing implied volatility calculation via "
         "adaptive successive over-relaxation...");
-
-    SavedSettings backup;
 
     const DayCounter dc = Actual365Fixed();
     const Date today = Date(12, July, 2017);
@@ -225,12 +226,12 @@ void BlackFormulaTest::testImpliedVolAdaptiveSuccessiveOverRelaxation() {
 
     const Real tol = 1e-8;
 
-    for (double strike : strikes) {
+    for (Real strike : strikes) {
         for (auto type : types) {
             const ext::shared_ptr<PlainVanillaPayoff> payoff(
                 ext::make_shared<PlainVanillaPayoff>(type, strike));
 
-            for (double displacement : displacements) {
+            for (Real displacement : displacements) {
 
                 const Real marketValue = blackFormula(payoff, forward, stdDev, df, displacement);
 
@@ -269,7 +270,7 @@ void assertBlackFormulaForwardDerivative(
     Real epsilon = 1.e-10;
     std::string type = optionType == Option::Call ? "Call" : "Put";
 
-    for (double strike : strikes) {
+    for (Real strike : strikes) {
         Real delta = blackFormulaForwardDerivative(optionType, strike, forward, stdDev, discount,
                                                    displacement);
         Real bumpedDelta = blackFormulaForwardDerivative(
@@ -304,7 +305,7 @@ void assertBlackFormulaForwardDerivative(
     }
 }
 
-void BlackFormulaTest::testBlackFormulaForwardDerivative() {
+BOOST_AUTO_TEST_CASE(testBlackFormulaForwardDerivative) {
 
     BOOST_TEST_MESSAGE("Testing forward derivative of the Black formula...");
 
@@ -319,7 +320,7 @@ void BlackFormulaTest::testBlackFormulaForwardDerivative() {
     assertBlackFormulaForwardDerivative(Option::Put, strikes, vol);
 }
 
-void BlackFormulaTest::testBlackFormulaForwardDerivativeWithZeroStrike() {
+BOOST_AUTO_TEST_CASE(testBlackFormulaForwardDerivativeWithZeroStrike) {
 
     BOOST_TEST_MESSAGE("Testing forward derivative of the Black formula "
         "with zero strike...");
@@ -331,7 +332,7 @@ void BlackFormulaTest::testBlackFormulaForwardDerivativeWithZeroStrike() {
     assertBlackFormulaForwardDerivative(Option::Put, strikes, vol);
 }
 
-void BlackFormulaTest::testBlackFormulaForwardDerivativeWithZeroVolatility() {
+BOOST_AUTO_TEST_CASE(testBlackFormulaForwardDerivativeWithZeroVolatility) {
 
     BOOST_TEST_MESSAGE("Testing forward derivative of the Black formula "
         "with zero volatility...");
@@ -360,7 +361,7 @@ void assertBachelierBlackFormulaForwardDerivative(
     Real epsilon = 1.e-10;
     std::string type = optionType == Option::Call ? "Call" : "Put";
 
-    for (double strike : strikes) {
+    for (Real strike : strikes) {
         Real delta =
             bachelierBlackFormulaForwardDerivative(optionType, strike, forward, stdDev, discount);
         Real bumpedDelta = bachelierBlackFormulaForwardDerivative(
@@ -394,7 +395,7 @@ void assertBachelierBlackFormulaForwardDerivative(
     }
 }
 
-void BlackFormulaTest::testBachelierBlackFormulaForwardDerivative() {
+BOOST_AUTO_TEST_CASE(testBachelierBlackFormulaForwardDerivative) {
 
     BOOST_TEST_MESSAGE("Testing forward derivative of the "
         "Bachelier Black formula...");
@@ -414,7 +415,7 @@ void BlackFormulaTest::testBachelierBlackFormulaForwardDerivative() {
     assertBachelierBlackFormulaForwardDerivative(Option::Put, strikes, vol);
 }
 
-void BlackFormulaTest::testBachelierBlackFormulaForwardDerivativeWithZeroVolatility() {
+BOOST_AUTO_TEST_CASE(testBachelierBlackFormulaForwardDerivativeWithZeroVolatility) {
 
     BOOST_TEST_MESSAGE("Testing forward derivative of the Bachelier Black formula "
         "with zero volatility...");
@@ -434,29 +435,6 @@ void BlackFormulaTest::testBachelierBlackFormulaForwardDerivativeWithZeroVolatil
     assertBachelierBlackFormulaForwardDerivative(Option::Put, strikes, vol);
 }
 
-test_suite* BlackFormulaTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Black formula tests");
+BOOST_AUTO_TEST_SUITE_END()
 
-    suite->add(QUANTLIB_TEST_CASE(
-        &BlackFormulaTest::testBachelierImpliedVol));
-    suite->add(QUANTLIB_TEST_CASE(
-        &BlackFormulaTest::testChambersImpliedVol));
-    suite->add(QUANTLIB_TEST_CASE(
-        &BlackFormulaTest::testRadoicicStefanicaImpliedVol));
-    suite->add(QUANTLIB_TEST_CASE(
-        &BlackFormulaTest::testRadoicicStefanicaLowerBound));
-    suite->add(QUANTLIB_TEST_CASE(
-        &BlackFormulaTest::testImpliedVolAdaptiveSuccessiveOverRelaxation));
-    suite->add(QUANTLIB_TEST_CASE(
-        &BlackFormulaTest::testBlackFormulaForwardDerivative));
-    suite->add(QUANTLIB_TEST_CASE(
-        &BlackFormulaTest::testBlackFormulaForwardDerivativeWithZeroStrike));
-    suite->add(QUANTLIB_TEST_CASE(
-        &BlackFormulaTest::testBlackFormulaForwardDerivativeWithZeroVolatility));
-    suite->add(QUANTLIB_TEST_CASE(
-        &BlackFormulaTest::testBachelierBlackFormulaForwardDerivative));
-    suite->add(QUANTLIB_TEST_CASE(
-        &BlackFormulaTest::testBachelierBlackFormulaForwardDerivativeWithZeroVolatility));
-
-    return suite;
-}
+BOOST_AUTO_TEST_SUITE_END()

@@ -19,7 +19,7 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
  */
 
-/*! \file makecapfloor.hpp
+/*! \file makeyoyinflationcapfloor.hpp
  \brief Helper class to instantiate standard yoy inflation cap/floor.
  */
 
@@ -67,13 +67,13 @@ namespace QuantLib {
         ext::shared_ptr<YoYInflationIndex> index_;
         Period observationLag_;
         Rate strike_;
-        bool firstCapletExcluded_, asOptionlet_;
+        bool firstCapletExcluded_ = false, asOptionlet_ = false;
         Date effectiveDate_;
         Period forwardStart_;
         DayCounter dayCounter_;
-        BusinessDayConvention roll_;
-        Natural fixingDays_;
-        Real nominal_;
+        BusinessDayConvention roll_ = ModifiedFollowing;
+        Natural fixingDays_ = 0;
+        Real nominal_ = 1000000.0;
         Handle<YieldTermStructure> nominalTermStructure_;
 
         ext::shared_ptr<PricingEngine> engine_;

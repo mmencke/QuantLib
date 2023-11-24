@@ -17,19 +17,18 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "cliquetoption.hpp"
+#include "toplevelfixture.hpp"
 #include "utilities.hpp"
-#include <ql/time/daycounters/actual360.hpp>
 #include <ql/instruments/cliquetoption.hpp>
 #include <ql/pricingengines/cliquet/analyticcliquetengine.hpp>
 #include <ql/pricingengines/cliquet/analyticperformanceengine.hpp>
 #include <ql/pricingengines/cliquet/mcperformanceengine.hpp>
 #include <ql/processes/blackscholesprocess.hpp>
-#include <ql/termstructures/yield/flatforward.hpp>
 #include <ql/termstructures/volatility/equityfx/blackconstantvol.hpp>
+#include <ql/termstructures/yield/flatforward.hpp>
 #include <ql/time/daycounters/actual360.hpp>
-#include <ql/utilities/dataformatters.hpp>
 #include <ql/time/period.hpp>
+#include <ql/utilities/dataformatters.hpp>
 #include <map>
 
 using namespace QuantLib;
@@ -51,8 +50,11 @@ using namespace boost::unit_test_framework;
                << "    error:            " << error << "\n" \
                << "    tolerance:        " << tolerance);
 
+BOOST_FIXTURE_TEST_SUITE(QuantLibTest, TopLevelFixture)
 
-void CliquetOptionTest::testValues() {
+BOOST_AUTO_TEST_SUITE(CliquetOptionTest)
+
+BOOST_AUTO_TEST_CASE(testValues) {
 
     BOOST_TEST_MESSAGE("Testing Cliquet option values...");
 
@@ -106,8 +108,6 @@ namespace {
     template <class T>
     void testOptionGreeks() {
 
-        SavedSettings backup;
-
         std::map<std::string,Real> calculated, expected, tolerance;
         tolerance["delta"]  = 1.0e-5;
         tolerance["gamma"]  = 1.0e-5;
@@ -142,7 +142,7 @@ namespace {
                                                           qTS, rTS, volTS));
 
         for (auto& type : types) {
-            for (double moneynes : moneyness) {
+            for (Real moneynes : moneyness) {
                 for (int length : lengths) {
                     for (auto& frequencie : frequencies) {
 
@@ -162,10 +162,10 @@ namespace {
                         CliquetOption option(payoff, maturity, reset);
                         option.setPricingEngine(engine);
 
-                        for (double u : underlyings) {
-                            for (double m : qRates) {
-                                for (double n : rRates) {
-                                    for (double v : vols) {
+                        for (Real u : underlyings) {
+                            for (Real m : qRates) {
+                                for (Real n : rRates) {
+                                    for (Real v : vols) {
 
                                         Rate q = m, r = n;
                                         spot->setValue(u);
@@ -255,24 +255,19 @@ namespace {
 
 }
 
-
-void CliquetOptionTest::testGreeks() {
+BOOST_AUTO_TEST_CASE(testGreeks) {
     BOOST_TEST_MESSAGE("Testing Cliquet option greeks...");
     testOptionGreeks<AnalyticCliquetEngine>();
 }
 
-
-void CliquetOptionTest::testPerformanceGreeks() {
+BOOST_AUTO_TEST_CASE(testPerformanceGreeks) {
     BOOST_TEST_MESSAGE("Testing performance option greeks...");
     testOptionGreeks<AnalyticPerformanceEngine>();
 }
 
-
-void CliquetOptionTest::testMcPerformance() {
+BOOST_AUTO_TEST_CASE(testMcPerformance) {
     BOOST_TEST_MESSAGE(
         "Testing Monte Carlo performance engine against analytic results...");
-
-    SavedSettings backup;
 
     Option::Type types[] = { Option::Call, Option::Put };
     Real moneyness[] = { 0.9, 1.1 };
@@ -300,7 +295,7 @@ void CliquetOptionTest::testMcPerformance() {
                                                           qTS, rTS, volTS));
 
     for (auto& type : types) {
-        for (double moneynes : moneyness) {
+        for (Real moneynes : moneyness) {
             for (int length : lengths) {
                 for (auto& frequencie : frequencies) {
 
@@ -326,10 +321,10 @@ void CliquetOptionTest::testMcPerformance() {
                             .withAbsoluteTolerance(5.0e-3)
                             .withSeed(42);
 
-                    for (double u : underlyings) {
-                        for (double m : qRates) {
-                            for (double n : rRates) {
-                                for (double v : vols) {
+                    for (Real u : underlyings) {
+                        for (Real m : qRates) {
+                            for (Real n : rRates) {
+                                for (Real v : vols) {
 
                                     Rate q = m, r = n;
                                     spot->setValue(u);
@@ -359,13 +354,6 @@ void CliquetOptionTest::testMcPerformance() {
     }
 }
 
+BOOST_AUTO_TEST_SUITE_END()
 
-test_suite* CliquetOptionTest::suite() {
-    auto* suite = BOOST_TEST_SUITE("Cliquet option tests");
-    suite->add(QUANTLIB_TEST_CASE(&CliquetOptionTest::testValues));
-    suite->add(QUANTLIB_TEST_CASE(&CliquetOptionTest::testGreeks));
-    suite->add(QUANTLIB_TEST_CASE(&CliquetOptionTest::testPerformanceGreeks));
-    suite->add(QUANTLIB_TEST_CASE(&CliquetOptionTest::testMcPerformance));
-    return suite;
-}
-
+BOOST_AUTO_TEST_SUITE_END()
